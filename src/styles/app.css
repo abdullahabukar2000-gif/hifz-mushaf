@@ -1,6 +1,8 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+/* iPhone would otherwise enlarge the text on its own. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /*
  * The app shell: a slim top bar, the view, the play bar and the tab bar. The
@@ -433,6 +435,20 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 }
 .ayah-translation.tappable { cursor: pointer; }
 .ayah-cover { justify-self: start; }
+
+ /* Phones: tighter, so a whole ayah and its meaning fit on screen. */
+@media (max-width: 520px) {
+  #stage[data-view='verses'] { padding-inline: 12px; }
+  .ayah { gap: 0.6rem; padding: 1rem 0 1.15rem; }
+  .ayah-text { font-size: clamp(1rem, 4.6vw, 1.2rem); line-height: 1.8; row-gap: 0.35rem; }
+  .box { border-width: 1px; border-radius: 6px; padding: 0 0.16em; gap: 0.2em; }
+  .edge { min-width: 9px; width: 0.35em; }
+  .english-line { font-size: 0.98rem; line-height: 1.6; }
+  .ayah-translation { font-size: 0.95rem; line-height: 1.55; }
+  .ayah-num { font-size: 0.82rem; }
+  .ayah-play.icon-only { width: 1.8rem; height: 1.8rem; }
+  .verses-page { padding-top: 1rem; }
+}
 
 .verses-source { margin: 1.2rem 0 0; font-size: 0.85rem; font-style: italic; color: var(--ink-quiet); }
 
