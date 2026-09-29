@@ -64,7 +64,7 @@ const FILE_FIXES: Record<string, Record<number, (ayah: number) => number | null>
 };
 // (Only for the per-ayah files: quran.com's whole-surah recordings are timed by ayah.)
 const fileAyah = (r: Reciter, surah: number, ayah: number): number | null =>
-  fromQdc(r, surah) ? ayah : FILE_FIXES[r.id]?.[surah]?.(ayah) ?? ayah;
+  fromQdc(r, surah) ? (qdcMissing.has(`${r.id}/${surah}:${ayah}`) ? null : ayah) : FILE_FIXES[r.id]?.[surah]?.(ayah) ?? ayah;
 /** How many ayahs of a surah this reciter's source actually has. */
 const recordedCount = (r: Reciter, surah: number) => {
   const n = getChapter(surah)?.verses_count ?? 0;
@@ -90,6 +90,7 @@ const timingJobs = new Map<string, Promise<Record<string, number[]>>>();
 const qdcFiles = new Map<string, string>();
 /** The surahs quran.com's recordings are used for (a surah that failed the build's check isn't there). */
 const qdcSurahs = new Map<string, Set<number>>();
+const qdcMissing = new Set<string>();
 function fromQdc(r: Reciter, surah: number): boolean { return !!qdcSurahs.get(r.id)?.has(surah); }
 const timingsUrl = (r: Reciter) => (r.gapless ? r.gapless.timings : `data/timings/qdc-${r.id}.json`);
 /** Ayah start times (ms) per surah, with the surah's end time last. */
@@ -102,6 +103,11 @@ function timings(r: Reciter): Promise<Record<string, number[]>> {
       if (typeof t.url === 'string') {
         qdcFiles.set(r.id, t.url);
         delete t.url;
+        // Ayahs the recordings don't have (found by listening at build time).
+        for (const [surah, ayahs] of Object.entries((t.missing ?? {}) as Record<string, number[]>)) {
+          for (const a of ayahs) qdcMissing.add(`${r.id}/${surah}:${a}`);
+        }
+        delete t.missing;
         qdcSurahs.set(r.id, new Set(Object.keys(t).map(Number)));
       }
       return t;

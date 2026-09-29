@@ -31,6 +31,7 @@ jobs:
       - run: python3 scripts/fetch-timings.py abdurrashid_sufi
       - run: python3 scripts/fetch-qdc.py
       - run: python3 scripts/merge-words.py
+      - run: python3 scripts/apply-retimed.py
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
