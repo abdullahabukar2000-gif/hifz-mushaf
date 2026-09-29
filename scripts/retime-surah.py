@@ -108,7 +108,7 @@ def place(want, owner, nwords, heard, cursor):
     for span in (2 * len(want) + 400, 8 * len(want) + 4000):
         window = heard[cursor:cursor + span]
         at, score = match(want, window)
-        if best is None or score > best[1]: best = (window, at, score)
+        if best is None or score > best[2]: best = (window, at, score)
         if score >= 0.6: break
     window, at, score = best
     times = [None if x is None else window[x][1] for x in at]
