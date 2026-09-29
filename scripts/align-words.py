@@ -50,7 +50,8 @@ def decode(data):
 # ---------------------------------------------------------------- text
 vocab = {int(k): v for k, v in json.load(open(f'{ASSETS}/vocab.json')).items()}
 BLANK = 1024
-tokens = json.load(open(f'{ASSETS}/quran_ctc_tokens.json'))
+# Keyed "surah:ayah:ayah" (a range of one ayah).
+tokens = {k.rsplit(':', 1)[0]: v for k, v in json.load(open(f'{ASSETS}/quran_ctc_tokens.json')).items() if k.split(':')[1] == k.split(':')[2]}
 counts = {}
 for f in glob.glob('public/data/pages-*.json'):
     for page in json.load(open(f)).values():
