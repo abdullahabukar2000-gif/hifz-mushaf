@@ -15,7 +15,6 @@
 
 import difflib, glob, json, os, subprocess, sys, tempfile, time, urllib.request
 import numpy as np
-import onnxruntime as ort
 
 reciter = sys.argv[1]
 part, parts = map(int, sys.argv[2].split('/'))
@@ -23,6 +22,8 @@ ASSETS = os.environ.get('ALIGN_ASSETS', 'align-assets')
 RATE = 16000
 CHUNK, OVERLAP = 30.0, 3.0      # seconds heard at a time, and overlap between pieces
 LEAD = 0.25                      # an ayah starts this long before its first letter
+# Line up what an earlier run heard (probe/heard/) instead of listening again.
+FROM_HEARD = '--from-heard' in sys.argv
 
 def get(url, tries=5):
     for i in range(tries):
@@ -40,8 +41,6 @@ def decode(data):
                              check=True, capture_output=True).stdout
     return np.frombuffer(raw, dtype=np.float32)
 
-vocab = {int(k): v for k, v in json.load(open(f'{ASSETS}/vocab.json')).items()}
-BLANK = 1024
 ayah_words = {}
 for f in sorted(glob.glob('public/data/pages-*.json')):
     for page in json.load(open(f)).values():
@@ -61,9 +60,13 @@ def letters(text):
         if ch and 'ء' <= ch <= 'ي': out.append(ch)
     return out
 
-opts = ort.SessionOptions()
-opts.intra_op_num_threads = os.cpu_count() or 4
-model = ort.InferenceSession(f'{ASSETS}/fastconformer_full_mixed.onnx', opts, providers=['CPUExecutionProvider'])
+if not FROM_HEARD:
+    import onnxruntime as ort
+    vocab = {int(k): v for k, v in json.load(open(f'{ASSETS}/vocab.json')).items()}
+    BLANK = 1024
+    opts = ort.SessionOptions()
+    opts.intra_op_num_threads = os.cpu_count() or 4
+    model = ort.InferenceSession(f'{ASSETS}/fastconformer_full_mixed.onnx', opts, providers=['CPUExecutionProvider'])
 
 def hear_all(pcm):
     """Every letter heard in the whole file, with its time (s), in order."""
@@ -129,6 +132,65 @@ def place(want, owner, nwords, heard, cursor):
     last = max(x for x in at if x is not None)
     return starts, score, cursor + last + 1
 
+def locate(want, owner, nwords, window):
+    """Where an ayah's words start within `window` (heard letters with times): starts (s), score."""
+    at, score = match(want, window)
+    times = [None if x is None else window[x][1] for x in at]
+    starts = [None] * nwords
+    for k in range(nwords):
+        idx = [i for i in range(len(want)) if owner[i] == k and times[i] is not None]
+        if idx: starts[k] = times[idx[0]]
+    known = [k for k in range(nwords) if starts[k] is not None]
+    if not known: return None, 0.0
+    for k in range(nwords):
+        if starts[k] is None:
+            before = max([j for j in known if j < k], default=None)
+            after = min([j for j in known if j > k], default=None)
+            if before is None: starts[k] = starts[after]
+            elif after is None: starts[k] = starts[before]
+            else: starts[k] = starts[before] + (starts[after] - starts[before]) * (k - before) / (after - before)
+    for k in range(1, nwords): starts[k] = max(starts[k], starts[k - 1])
+    return starts, score
+
+def anchored(s, heard, duration):
+    """Each ayah looked for around its published time (a little either side,
+    then wider if it isn't there), never before the ayah before it. Each ayah
+    is found on its own, so one hard ayah can't throw the rest off."""
+    pub = src.get(str(s))
+    n = verses[s]
+    times, scores, words_out = [], [], {}
+    prev_start, prev_end = 0.0, 0.0
+    for a in range(1, n + 1):
+        key = f'{s}:{a}'
+        words = ayah_words[key]
+        want, owner = [], []
+        for k, w in enumerate(words):
+            for ch in letters(w): want.append(ch); owner.append(k)
+        if pub and a < len(pub):
+            p_from, p_to = pub[a - 1] / 1000, pub[a] / 1000
+        else:  # no published time: just after the ayah before, as long as its letters suggest
+            p_from, p_to = prev_end, prev_end + len(want) * 0.12
+        span = max(1.0, p_to - p_from)
+        best = None
+        for margin in (8, 30, 120, 600):
+            lo = max(prev_start + 0.05, p_from - margin)
+            hi = max(p_to + margin, prev_end + 2 * span + margin)
+            window = [(c, t) for c, t in heard if lo <= t <= hi]
+            if not window: continue
+            starts, score = locate(want, owner, len(words), window)
+            if starts and (best is None or score > best[1]): best = (starts, score)
+            if best and best[1] >= 0.8: break
+        if not best or best[1] < 0.3:
+            scores.append(round(best[1] if best else 0.0, 3)); times.append(None); words_out[key] = None; continue
+        starts, score = best
+        scores.append(round(score, 3))
+        times.append(max(0.0, starts[0] - LEAD))
+        words_out[key] = starts
+        prev_start = starts[0]
+        # Where this ayah's heard letters end (roughly): its last word's start plus a little.
+        prev_end = starts[-1] + 0.3
+    return times, scores, words_out
+
 src = json.load(open(f'public/data/timings/qdc-{reciter}.json'))
 url_of = lambda s: src['url'].replace('{sss}', f'{s:03d}').replace('{s}', str(s))
 weights = [sum(len(ayah_words.get(f'{s}:{a}', [])) for a in range(1, verses[s] + 1)) for s in range(1, 115)]
@@ -141,27 +203,21 @@ os.makedirs(f'data/timings-retimed/{reciter}', exist_ok=True)
 print(reciter, 'part', part, 'of', parts, 'surahs', mine, flush=True)
 
 for s in mine:
-    try: pcm = decode(get(url_of(s)))
-    except Exception as e: print(s, 'recording unavailable:', e, flush=True); continue
-    heard = hear_all(pcm)
-    duration = len(pcm) / RATE
+    if FROM_HEARD:
+        try: h = json.load(open(f'probe/heard/{reciter}/{s}.json'))
+        except FileNotFoundError: continue
+        heard, duration = list(zip(h['letters'], h['times'])), h['duration']
+    else:
+        try: pcm = decode(get(url_of(s)))
+        except Exception as e: print(s, 'recording unavailable:', e, flush=True); continue
+        heard = hear_all(pcm)
+        duration = len(pcm) / RATE
     # What was heard, kept so the lining-up can be checked and tuned without listening again.
-    os.makedirs(f'probe/heard/{reciter}', exist_ok=True)
-    json.dump({'letters': ''.join(c for c, _ in heard), 'times': [round(t, 2) for _, t in heard], 'duration': duration},
-              open(f'probe/heard/{reciter}/{s}.json', 'w'), separators=(',', ':'))
-    cursor, times, scores, words_out, word_ends = 0, [], [], {}, []
-    for a in range(1, verses[s] + 1):
-        key = f'{s}:{a}'
-        words = ayah_words[key]
-        want, owner = [], []
-        for k, w in enumerate(words):
-            for ch in letters(w): want.append(ch); owner.append(k)
-        starts, score, cursor = place(want, owner, len(words), heard, cursor)
-        scores.append(round(score, 3))
-        if starts is None:
-            times.append(None); words_out[key] = None; continue
-        times.append(max(0.0, starts[0] - LEAD))
-        words_out[key] = starts
+    if not FROM_HEARD: os.makedirs(f'probe/heard/{reciter}', exist_ok=True)
+    if not FROM_HEARD:
+        json.dump({'letters': ''.join(c for c, _ in heard), 'times': [round(t, 2) for _, t in heard], 'duration': duration},
+                  open(f'probe/heard/{reciter}/{s}.json', 'w'), separators=(',', ':'))
+    times, scores, words_out = anchored(s, heard, duration)
     # Ayah times in ms (each ayah ends where the next starts; the last at the file's end).
     ms = [None if t is None else round(t * 1000) for t in times] + [round(duration * 1000)]
     words_json = {}
