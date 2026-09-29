@@ -1,4 +1,4 @@
-publish run: success 235f1c37dca52b83bc26b8a3e76187dcf5c4c70d
+publish run: failure 51480444592d525af45fd0764a44914c8ce651e3
 200 1800 
 200 45777 data/timings/qdc-alafasy.json
 200 46818 data/timings/qdc-husary.json
