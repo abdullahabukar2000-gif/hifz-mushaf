@@ -191,7 +191,7 @@ function sources(): HTMLElement {
     ['Page layout', 'Which word sits on which line: checked against the King Fahd Complex’s own listing and your printed mushaf.'],
     ['Translation', 'The Clear Quran by Dr. Mustafa Khattab, as on quran.com, unchanged.'],
     ['Groups', 'Suggested by matching each part of the translation to the Arabic words it means. Yours to change.'],
-    ['Recitations', 'Per-ayah recordings from everyayah.com, played unchanged.'],
+    ['Recitations', 'Per-ayah recordings from everyayah.com, played unchanged. Where quran.com has a reciter’s word-by-word timings, its recordings are played instead (unchanged), so each word can be revealed as it’s recited.'],
   ]) list.append(h('li', {}, h('span', { class: 'source-what' }, what), h('span', {}, from)));
   return list;
 }

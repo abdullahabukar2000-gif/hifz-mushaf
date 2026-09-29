@@ -84,15 +84,19 @@ def one(app, name, style, avoid):
                 seg = segs_of(v, int(v['timestamp_from']))
                 n = words.get(v['verse_key'], 0)
                 word_all += 1
-                if seg and [w for w, _, _ in seg] == sorted(w for w, _, _ in seg) and max(w for w, _, _ in seg) == n and all(a <= b for _, a, b in seg):
+                # Usable: word numbers within the ayah and in order, times in order. A
+            # word missing from the list just shows with the next one (or when the
+            # ayah ends).
+            ws_ = [w for w, _, _ in seg]
+            if seg and ws_ == sorted(ws_) and 1 <= ws_[0] and ws_[-1] <= n and [a for _, a, _ in seg] == sorted(a for _, a, _ in seg):
                     word_ok += 1
                     ws[v['verse_key']] = seg
             per_surah[s] = ws
             if s in (1, 14): print(app, s, url, json.dumps(vt[0])[:400])
         if problems or not url_tmpl:
             print(app, ': left out —', problems[:5]); return
-        print(app, f': word timings match the mushaf for {word_ok} of {word_all} ayahs')
-        if word_ok < 0.9 * word_all:
+        print(app, f': usable word timings for {word_ok} of {word_all} ayahs (the rest: estimated)')
+        if word_ok < 0.8 * word_all:
             print(app, ': too many ayahs whose word timings don\'t match — left out'); return
         os.makedirs('public/data/timings', exist_ok=True)
         json.dump({'url': url_tmpl, **timing}, open(f'public/data/timings/qdc-{app}.json', 'w'), separators=(',', ':'))

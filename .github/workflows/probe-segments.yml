@@ -1,4 +1,4 @@
-# One-off check: which reciters have word-by-word timings. The report is
+# One-off check: which reciters have word-by-word timings (and the fetch log). The report is
 # committed to probe/segments.txt.
 name: Probe word timings
 on:
