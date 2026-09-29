@@ -85,10 +85,10 @@ def one(app, name, style, avoid):
                 n = words.get(v['verse_key'], 0)
                 word_all += 1
                 # Usable: word numbers within the ayah and in order, times in order. A
-            # word missing from the list just shows with the next one (or when the
-            # ayah ends).
-            ws_ = [w for w, _, _ in seg]
-            if seg and ws_ == sorted(ws_) and 1 <= ws_[0] and ws_[-1] <= n and [a for _, a, _ in seg] == sorted(a for _, a, _ in seg):
+                # word missing from the list just shows with the next one (or when the
+                # ayah ends).
+                ws_ = [w for w, _, _ in seg]
+                if seg and ws_ == sorted(ws_) and 1 <= ws_[0] and ws_[-1] <= n and [a for _, a, _ in seg] == sorted(a for _, a, _ in seg):
                     word_ok += 1
                     ws[v['verse_key']] = seg
             per_surah[s] = ws
