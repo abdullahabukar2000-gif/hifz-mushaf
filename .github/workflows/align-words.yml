@@ -1,0 +1,84 @@
+# Word timings found by listening to each reciter's recordings (see
+# scripts/align-words.py). Heavy (every ayah of every reciter), so it runs only
+# when asked, or when the aligner changes; the result is committed to
+# data/words-aligned/ and used by every later build.
+name: Align words to recordings
+on:
+  push:
+    branches: [claude/great-goodall-w4d11z]
+    paths: [scripts/align-words.py, .github/workflows/align-words.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { reciter: sufi, part: 1, parts: 6 }
+          - { reciter: sufi, part: 2, parts: 6 }
+          - { reciter: sufi, part: 3, parts: 6 }
+          - { reciter: sufi, part: 4, parts: 6 }
+          - { reciter: sufi, part: 5, parts: 6 }
+          - { reciter: sufi, part: 6, parts: 6 }
+          - { reciter: muaiqly, part: 1, parts: 6 }
+          - { reciter: muaiqly, part: 2, parts: 6 }
+          - { reciter: muaiqly, part: 3, parts: 6 }
+          - { reciter: muaiqly, part: 4, parts: 6 }
+          - { reciter: muaiqly, part: 5, parts: 6 }
+          - { reciter: muaiqly, part: 6, parts: 6 }
+          - { reciter: ayyub, part: 1, parts: 6 }
+          - { reciter: ayyub, part: 2, parts: 6 }
+          - { reciter: ayyub, part: 3, parts: 6 }
+          - { reciter: ayyub, part: 4, parts: 6 }
+          - { reciter: ayyub, part: 5, parts: 6 }
+          - { reciter: ayyub, part: 6, parts: 6 }
+          - { reciter: tunaiji, part: 1, parts: 6 }
+          - { reciter: tunaiji, part: 2, parts: 6 }
+          - { reciter: tunaiji, part: 3, parts: 6 }
+          - { reciter: tunaiji, part: 4, parts: 6 }
+          - { reciter: tunaiji, part: 5, parts: 6 }
+          - { reciter: tunaiji, part: 6, parts: 6 }
+          - { reciter: alafasy, part: 1, parts: 2, missing: --missing-only }
+          - { reciter: alafasy, part: 2, parts: 2, missing: --missing-only }
+          - { reciter: husary, part: 1, parts: 2, missing: --missing-only }
+          - { reciter: husary, part: 2, parts: 2, missing: --missing-only }
+          - { reciter: minshawi, part: 1, parts: 2, missing: --missing-only }
+          - { reciter: minshawi, part: 2, parts: 2, missing: --missing-only }
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y ffmpeg >/dev/null 2>&1 && pip install -q onnxruntime numpy
+      - uses: actions/cache@v4
+        with: { path: align-assets, key: tilawi-e9448a0e }
+      - name: Speech model and its token table (pinned)
+        run: |
+          mkdir -p align-assets && cd align-assets
+          M=https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/e9448a0e84f3adb64c28b7a8db501dd8e0e59a84
+          for f in fastconformer_full_mixed.onnx vocab.json quran_ctc_tokens.json; do [ -s $f ] || curl -sfL -o $f $M/$f; done
+          echo "4767182cd92975869f81a7e32700b14ca2b04e8dc97a15ff220a8697f4639488  fastconformer_full_mixed.onnx" | sha256sum -c
+      - run: python3 scripts/fetch-timings.py abdurrashid_sufi > /dev/null && python3 scripts/fetch-qdc.py > /dev/null
+      - run: python3 scripts/align-words.py ${{ matrix.reciter }} ${{ matrix.part }}/${{ matrix.parts }} ${{ matrix.missing }} 2>&1 | tee align-${{ matrix.reciter }}-${{ matrix.part }}.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: words-${{ matrix.reciter }}-${{ matrix.part }}
+          path: |
+            data/words-aligned/
+            align-${{ matrix.reciter }}-${{ matrix.part }}.log
+  save:
+    needs: align
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: got, pattern: words-*, merge-multiple: true }
+      - run: |
+          mkdir -p data/words-aligned probe
+          cp -r got/data/words-aligned/* data/words-aligned/ 2>/dev/null || true
+          { for f in got/*.log; do echo "== $f"; grep -E "FINAL|scores|not confident|unavailable|Error|Traceback" "$f" | head -40; done; } > probe/align-report.txt
+          cat probe/align-report.txt | head -200
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add data/words-aligned probe/align-report.txt && git commit -m "Word timings found by listening to the recordings" && git pull -q --rebase && git push
