@@ -208,9 +208,8 @@ body {
 #topbar .icon-only .label, .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Only what applies to the view on screen. */
-#topbar :is(#next, #prev, #layout, #cover, #hide, #listen) { display: none; }
+#topbar :is(#next, #prev, #layout, #hide, #listen) { display: none; }
 body[data-view='mushaf'] #topbar :is(#next, #prev, #layout),
-body[data-view='verses'] #topbar #cover,
 body:is([data-view='mushaf'], [data-view='verses']) #topbar :is(#hide, #listen) { display: inline-flex; }
 @media (max-width: 640px) {
   /* On phones you swipe, and a two-page spread would be too small to read. */
@@ -743,3 +742,18 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 .hide-arabic :is(.w, .vw).heard, .hide-arabic .w.peek { animation: fill-in 0.25s ease-out; }
 @keyframes fill-in { from { opacity: 0.2; } to { opacity: 1; } }
 #topbar #hide[aria-pressed='true'] { color: var(--accent-ink); background: var(--accent-wash); }
+
+/* The reveal menu under its button. */
+.reveal-menu {
+  position: fixed; z-index: 50; display: grid; gap: 4px; padding: 6px; width: min(20rem, calc(100vw - 16px));
+  background: var(--paper); border: 1px solid var(--card-rule); border-radius: 12px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.14);
+}
+.reveal-item {
+  display: grid; gap: 2px; text-align: left; font: inherit; color: var(--ink);
+  background: none; border: 0; border-radius: 8px; padding: 0.55rem 0.7rem 0.55rem 2rem; cursor: pointer; position: relative;
+}
+.reveal-item:hover { background: var(--accent-wash); }
+.reveal-item[aria-checked='true']::before { content: '✓'; position: absolute; left: 0.7rem; top: 0.55rem; color: var(--accent-ink); font-weight: 600; }
+.reveal-label { font-weight: 600; font-size: 0.95rem; }
+.reveal-note { font-size: 0.8rem; color: var(--ink-quiet); }

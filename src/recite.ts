@@ -118,10 +118,15 @@ for (const r of RECITERS.filter((x) => x.qdc)) qdcChecks.set(r.id, timings(r).th
 const wholeSurah = (r: Reciter, surah: number) => !!r.gapless || fromQdc(r, surah);
 async function settled(r: Reciter): Promise<void> { await qdcChecks.get(r.id); }
 
-const wordJobs = new Map<string, Promise<Record<string, [number, number, number][]>>>();
-/** When each word starts and ends (ms, in the surah file), if known. */
-function wordTimes(r: Reciter, surah: number): Promise<Record<string, [number, number, number][]>> | null {
-  if (!fromQdc(r, surah)) return null;
+const wordJobs = new Map<string, Promise<WordFile>>();
+/**
+ * When each word starts and ends (ms), where known: from quran.com, or found
+ * by listening to the recording at build time. "_base" says which recording
+ * the times are in: a surah file ("qdc", "sufi") or each ayah's own file
+ * ("everyayah").
+ */
+type WordFile = Record<string, [number, number, number][]> & { _base?: string };
+function wordTimes(r: Reciter, surah: number): Promise<WordFile> {
   const k = `${r.id}/${surah}`;
   let job = wordJobs.get(k);
   if (!job) {
@@ -131,7 +136,7 @@ function wordTimes(r: Reciter, surah: number): Promise<Record<string, [number, n
   }
   return job;
 }
-const loadedWords = new Map<string, Record<string, [number, number, number][]>>();
+const loadedWords = new Map<string, WordFile>();
 
 /**
  * Where an ayah sits in a one-file-per-surah recording: which surah's file,
@@ -335,16 +340,17 @@ function emitProgress(): void {
   const key = `${now.surah}:${now.ayah}`;
   let words: number | undefined;
   const r = reciterById(now.plan.reciter);
-  if (audio.dataset.file && fromQdc(r, now.surah)) {
-    const k = `${r.id}/${now.surah}`;
-    const known = loadedWords.get(k);
-    if (known) {
-      // A word shows as it begins (a moment early, so it's there as it's heard).
-      const ms = t * 1000 + 120;
-      const segs = known[key];
-      if (segs) words = segs.filter(([, from]) => from <= ms).reduce((n, [w]) => Math.max(n, w), 0);
-    } else void wordTimes(r, now.surah)?.then((w) => loadedWords.set(k, w), () => undefined);
-  }
+  const k = `${r.id}/${now.surah}`;
+  const known = loadedWords.get(k);
+  if (known) {
+    // Only if the times are for the recording that's playing.
+    const base = known._base ?? 'qdc';
+    const fits = audio.dataset.file ? base !== 'everyayah' : base === 'everyayah';
+    const segs = fits ? known[key] : undefined;
+    // A word shows as it begins (a moment early, so it's there as it's heard).
+    const ms = t * 1000 + 120;
+    if (segs) words = segs.filter(([, from]) => from <= ms).reduce((n, [w]) => Math.max(n, w), 0);
+  } else if (!wordJobs.has(k)) void wordTimes(r, now.surah).then((w) => loadedWords.set(k, w));
   progressFns.forEach((fn) => fn(key, fraction, words));
 }
 // Several times a second while playing (timeupdate alone is too coarse to follow words).

@@ -28,7 +28,6 @@ const stage = document.querySelector<HTMLElement>('#stage')!;
 const title = document.querySelector<HTMLElement>('#title')!;
 const subtitle = document.querySelector<HTMLElement>('#subtitle')!;
 const layoutButton = document.querySelector<HTMLButtonElement>('#layout')!;
-const coverButton = document.querySelector<HTMLButtonElement>('#cover')!;
 const hideButton = document.querySelector<HTMLButtonElement>('#hide')!;
 const nextButton = document.querySelector<HTMLButtonElement>('#next')!;
 const prevButton = document.querySelector<HTMLButtonElement>('#prev')!;
@@ -43,8 +42,15 @@ const store = {
 const VIEWS: View[] = ['home', 'mushaf', 'verses', 'settings'];
 let view: View = VIEWS.includes(store.get('view') as View) ? store.get('view') as View : 'home';
 let layout: Layout = store.get('layout') === 'spread' ? 'spread' : 'single';
-let coverTranslations = store.get('cover') === 'yes';
-let hideArabic = store.get('hide-arabic') === 'yes';
+/**
+ * What's hidden and revealed as a reciter plays: nothing ('off'), only the
+ * translation ('english', the Arabic stays), or both ('both').
+ */
+type RevealMode = 'off' | 'english' | 'both';
+let revealMode: RevealMode = (['off', 'english', 'both'] as RevealMode[]).find((m) => m === store.get('reveal-mode'))
+  ?? (store.get('hide-arabic') === 'yes' ? 'both' : store.get('cover') === 'yes' ? 'english' : 'off');
+let coverTranslations = revealMode !== 'off';
+let hideArabic = revealMode === 'both';
 const savedPage = Number(store.get('page'));
 let lastPage: number | null = savedPage >= 1 && savedPage <= TOTAL_PAGES ? savedPage : null;
 const prefs: Prefs = {
@@ -100,9 +106,9 @@ function updateChrome(): void {
     if (t.dataset.view === view) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
   });
   iconButton(layoutButton, layout === 'single' ? 'twoPages' : 'onePage', layout === 'single' ? 'Two pages' : 'One page');
-  iconButton(coverButton, coverTranslations ? 'eye' : 'eyeOff', coverTranslations ? 'Show translations' : 'Hide translations');
-  iconButton(hideButton, hideArabic ? 'text' : 'textOff', hideArabic ? 'Show everything' : 'Reveal as recited');
-  hideButton.setAttribute('aria-pressed', String(hideArabic));
+  iconButton(hideButton, revealMode === 'off' ? 'eye' : 'eyeOff', 'Reveal as recited');
+  hideButton.setAttribute('aria-pressed', String(revealMode !== 'off'));
+  hideButton.setAttribute('aria-haspopup', 'menu');
   document.body.classList.toggle('hide-arabic', hideArabic);
   updateTitle();
 }
@@ -382,25 +388,46 @@ layoutButton.addEventListener('click', () => {
   store.set('layout', layout);
   go('mushaf', page);
 });
-coverButton.addEventListener('click', () => {
-  coverTranslations = !coverTranslations;
-  resetReveals();
-  store.set('cover', coverTranslations ? 'yes' : 'no');
-  refresh();
-});
-// Reveal-as-recited mode: the Arabic (every word a blank) and the translation
-// are hidden, and fill in as the reciter you're listening to reaches them.
-hideButton.addEventListener('click', () => {
-  hideArabic = !hideArabic;
-  store.set('hide-arabic', hideArabic ? 'yes' : 'no');
-  coverTranslations = hideArabic;
-  store.set('cover', coverTranslations ? 'yes' : 'no');
+// Reveal as recited: a small menu of what to hide, which then fills in as the
+// reciter you're listening to reaches each word (Arabic) and each meaning
+// group (translation).
+const REVEAL_CHOICES: [RevealMode, string, string][] = [
+  ['off', 'Show everything', 'Arabic and translation always showing'],
+  ['english', 'Reveal the translation', 'The Arabic stays; each meaning appears as it’s recited'],
+  ['both', 'Reveal Arabic and translation', 'Each word and its meaning appear as they’re recited'],
+];
+function setReveal(mode: RevealMode): void {
+  revealMode = mode;
+  store.set('reveal-mode', mode);
+  coverTranslations = mode !== 'off';
+  hideArabic = mode === 'both';
   resetReveals();
   clearHeard();
   stage.querySelectorAll('.w.heard, .w.peek').forEach((el) => el.classList.remove('heard', 'peek'));
   updateChrome();
   refresh();
+}
+let revealMenu: HTMLElement | null = null;
+function closeRevealMenu(): void { revealMenu?.remove(); revealMenu = null; hideButton.setAttribute('aria-expanded', 'false'); }
+hideButton.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (revealMenu) { closeRevealMenu(); return; }
+  const menu = h('div', { class: 'reveal-menu', role: 'menu' });
+  for (const [mode, label, note] of REVEAL_CHOICES) {
+    const item = h('button', { type: 'button', role: 'menuitemradio', class: 'reveal-item', 'aria-checked': String(mode === revealMode) },
+      h('span', { class: 'reveal-label' }, label), h('span', { class: 'reveal-note' }, note));
+    item.addEventListener('click', () => { closeRevealMenu(); setReveal(mode); });
+    menu.append(item);
+  }
+  const b = hideButton.getBoundingClientRect();
+  menu.style.top = `${b.bottom + 6}px`;
+  menu.style.right = `${Math.max(8, innerWidth - b.right)}px`;
+  document.body.append(menu);
+  revealMenu = menu;
+  hideButton.setAttribute('aria-expanded', 'true');
 });
+document.addEventListener('click', (e) => { if (revealMenu && !revealMenu.contains(e.target as Node)) closeRevealMenu(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRevealMenu(); });
 /** Fill in the first `words` words of an ayah (hidden Arabic). */
 function fillIn(key: string, words: number): void {
   fillWords(key, words);
