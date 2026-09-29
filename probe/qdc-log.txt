@@ -7,7 +7,11 @@ husary -> 6 Mahmoud Khalil Al-Husary Murattal
 husary 1 https://download.quranicaudio.com/qdc/khalil_al_husary/murattal/1.mp3 {"verse_key": "1:1", "timestamp_from": 0, "timestamp_to": 5220, "duration": -5220, "segments": [[1, 0, 540], [2, 540, 1350], [3, 1350, 2356], [4, 2356, 4810]]}
 husary 14 https://download.quranicaudio.com/qdc/khalil_al_husary/murattal/14.mp3 {"verse_key": "14:1", "timestamp_from": 0, "timestamp_to": 30380, "duration": -30380, "segments": [[1, 0, 5210], [2, 5230, 8380], [3, 8380, 10730], [4, 10730, 11770], [5, 11770, 13110], [6, 13110, 14660], [7, 14660, 15170], [8, 15170, 17030], [9, 17030, 17660], [10, 17660, 19210], [11, 19210, 20290], [12, 20290, 21700], [13, 21700, 22580], [14, 22580, 23810], [15, 23810, 25400], [16, 25400, 29060]
 husary : usable word timings for 5914 of 6236 ayahs (the rest: estimated)
-husary : surahs whose ayah lengths look off: ['94 (0.58)', '95 (0.65)', '104 (0.57)', '105 (0.29)', '107 (0.54)']
+husary : surah 94 ayah lengths look off (0.58)
+husary : surah 95 ayah lengths look off (0.65)
+husary : surah 104 ayah lengths look off (0.57)
+husary : surah 105 ayah lengths look off (0.29)
+husary : surah 107 ayah lengths look off (0.54)
 husary : written
 minshawi -> 9 Mohamed Siddiq al-Minshawi Murattal
 minshawi 1 https://download.quranicaudio.com/qdc/siddiq_minshawi/murattal/1.mp3 {"verse_key": "1:1", "timestamp_from": 0, "timestamp_to": 5040, "duration": 4980, "segments": [[1, 20.0, 830.0], [2, 830.0, 1490.0], [3, 1490.0, 2610.0], [4, 2610.0, 3945.0]]}
@@ -19,5 +23,6 @@ tunaiji -> 161 Khalifah Al Tunaiji Murattal
 tunaiji 1 https://download.quranicaudio.com/qdc/khalifah_taniji/murattal/1.mp3 {"verse_key": "1:1", "timestamp_from": 0, "timestamp_to": 5620, "duration": 5640, "segments": [[1, 0.0, 780.0], [2, 780.0, 1590.0], [3, 1590.0, 2750.0], [4, 2750.0, 5475.0]]}
 tunaiji 14 https://download.quranicaudio.com/qdc/khalifah_taniji/murattal/14.mp3 {"verse_key": "14:1", "timestamp_from": 0, "timestamp_to": 14160, "duration": 14110, "segments": [[1, 0.0, 6930.0], [7, 6930.0, 11920.0], [9, 11920.0, 13625.0]]}
 tunaiji : usable word timings for 0 of 6236 ayahs (the rest: estimated)
-tunaiji : surahs whose ayah lengths look off: ['14 (0.36)']
+tunaiji : surah 14 ayah lengths look off (0.36)
+tunaiji : left on the per-ayah files for surahs ['14']
 tunaiji : written
