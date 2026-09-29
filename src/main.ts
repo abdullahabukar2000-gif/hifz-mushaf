@@ -421,20 +421,25 @@ new MutationObserver(() => {
   if (!marked) return;
   stage.querySelectorAll<HTMLElement>(`.ayah[data-key="${marked}"]:not(.reciting), .w[data-key="${marked}"]:not(.reciting)`).forEach((el) => el.classList.add('reciting'));
 }).observe(stage, { childList: true, subtree: true });
-// Auto-reveal: as a reciter reaches each part of the ayah, its box opens, as
-// if tapped. Where each word falls is estimated from the words' lengths.
-onProgress((key, fraction) => {
-  if (view !== 'verses' && !hideArabic) return;
-  const words = ayahWords(key);
-  if (!words.length) return;
-  const lengths = words.map((w) => w.length);
-  const total = lengths.reduce((a, b) => a + b, 0);
-  let reached = 0;
-  let before = 0;
-  for (const len of lengths) {
-    if (before / total > fraction + 0.02) break;
-    reached++;
-    before += len;
+// Reveal as recited: as the reciter reaches each word, it shows (Arabic), and
+// each meaning group opens as its first word is reached (translation). With
+// quran.com's timings the words follow the recording exactly; otherwise where
+// each word falls is estimated from the words' lengths.
+onProgress((key, fraction, known) => {
+  if (!hideArabic && view !== 'verses') return;
+  let reached = known;
+  if (reached === undefined) {
+    const words = ayahWords(key);
+    if (!words.length) return;
+    const lengths = words.map((w) => w.length);
+    const total = lengths.reduce((a, b) => a + b, 0);
+    reached = 0;
+    let before = 0;
+    for (const len of lengths) {
+      if (before / total > fraction + 0.02) break;
+      reached++;
+      before += len;
+    }
   }
   if (hideArabic) fillIn(key, reached);
   if (view === 'verses') revealWords(key, reached);

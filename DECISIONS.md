@@ -233,46 +233,21 @@
   ayahs). The player seeks to each ayah's start and stops at its end; straight-through
   listening just keeps playing. Downloading a surah saves its one file.
 
-# Recitation mode (listening, like Tarteel)
+# Recitation mode: removed
 
-- The mic button listens while you recite and checks you word by word against the
-  mushaf. Correct words turn green, wrong or skipped words turn red, and a short low
-  two-note sound plays for each mistake. Harakat (tashkeel) and tajweed are not judged.
-- Everything runs on the phone: Tilawi's open speech model
-  (huggingface.co/muhdur/tilawi-fastconformer-quran, pinned revision, 88 MB, checked by
-  SHA-256; CC-BY-4.0, fine-tuned from NVIDIA's Arabic FastConformer) through
-  onnxruntime-web, and @tilawi/quran-asr (MIT) to line up what you said with the text.
-  The model is downloaded only after you agree, once, and kept. Nothing is sent anywhere.
-- The expected words are always the app's own mushaf words; the model's output is only
-  compared against them and never shown as Quran text.
-- A word is called wrong only after you've carried on correctly past it, so being cut
-  off mid-word or the model still catching up doesn't count as a mistake.
-- Audio: the mic is recorded without phone-call processing, at the device's own rate, on
-  the audio thread (public/mic-worklet.js; nothing is dropped while the model runs), and
-  converted to 16 kHz in the app. It's heard in pieces of ~10 s cut at a real pause, so
-  no word is split between pieces.
-- A run of wrong or skipped words (a missed ayah) is one mistake and one sound, played
-  only once the word has been judged wrong twice with three right words after it.
-- Where you are only moves forward: to the next word when it's said right, or to a spot
-  confirmed by 3 right words out of 5 (so a skipped ayah is followed, but a stray
-  misheard word further on doesn't pull the screen there). The start is found from 3
-  words in a row at the chosen ayah, or 4 of 5 further on.
-- A chime plays when listening starts; the mistake sound is louder.
-- Speed on the test machine: words show about 1–3 s after they're said inside an ayah,
-  4–6 s at the start of a new one. 8-second pieces were ~2 s quicker but wrongly flagged
-  words, so 10-second pieces are kept.
-- Result of the e2e check: all 70 recited words right, the left-out ayah 14:3 flagged,
-  one mistake sound.
-- Auto-reveal: in verse by verse, translation blocks open by themselves as the words they
-  cover are recited — by you (recitation mode) or by the reciter you're listening to.
-- Test: `.github/workflows/e2e-recite.yml` feeds a real recitation (Husary 14:1, 14:2,
-  14:4, 14:5 — 14:3 left out on purpose) to the app as its microphone.
+- The microphone recitation checker (and its speech model, onnxruntime and test
+  workflow) was removed at the user's request.
 
-# Hide the Arabic (test yourself, like Tarteel)
+# Reveal as recited
 
-- A "Hide Arabic" button (mushaf and verse by verse) turns every word into a pale blank
-  of the same size; ayah numbers, surah names and the basmalah stay, to keep your place.
-- Words fill in as you recite them (green when right, red when wrong, and words you've
-  passed that were only nearly heard), or as the reciter you're listening to reaches
-  them. On the mushaf page you can tap a blank to peek at it.
-- Switching it off and on again starts afresh.
+- One button (mushaf and verse by verse) hides the Arabic (each word a pale blank of the
+  same size; ayah numbers, surah names and the basmalah stay) and covers the translation.
+  While a reciter plays, each word shows as it's recited and each meaning group opens as
+  its first word is reached. Press it again to show everything. On the mushaf page a
+  blank can be tapped to peek.
+- Word times: for Mishary Alafasy, Mahmoud Khalil Al-Husary and Minshawi (murattal),
+  scripts/fetch-qdc.py fetches quran.com's recordings' ayah and word timings at build
+  time (checked: every ayah's words numbered 1..n as in the mushaf, ayahs in order), and
+  the app then plays those recordings (one file per surah), so words follow exactly. If
+  the data isn't there, those reciters fall back to their everyayah per-ayah files.
+  Other reciters: word positions are estimated from the words' lengths.

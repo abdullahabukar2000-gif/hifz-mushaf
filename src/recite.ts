@@ -19,12 +19,19 @@ export interface Reciter {
    * scripts/fetch-timings.py).
    */
   gapless?: { base: string; timings: string };
+  /**
+   * quran.com's recordings of this reciter, with a time for every word
+   * (scripts/fetch-qdc.py, at build time). When they're there, they're played
+   * instead, so each word can be revealed as it's recited; if not, the
+   * per-ayah recordings above are used.
+   */
+  qdc?: boolean;
 }
 
 export const RECITERS: Reciter[] = [
-  { id: 'alafasy', name: 'Mishary Alafasy', folders: ['Alafasy_128kbps', 'Alafasy_64kbps'] },
-  { id: 'husary', name: 'Mahmoud Khalil Al-Husary', folders: ['Husary_128kbps', 'Husary_64kbps'] },
-  { id: 'minshawi', name: 'Muhammad Siddiq Al-Minshawi', folders: ['Minshawy_Murattal_128kbps'] },
+  { id: 'alafasy', name: 'Mishary Alafasy', folders: ['Alafasy_128kbps', 'Alafasy_64kbps'], qdc: true },
+  { id: 'husary', name: 'Mahmoud Khalil Al-Husary', folders: ['Husary_128kbps', 'Husary_64kbps'], qdc: true },
+  { id: 'minshawi', name: 'Muhammad Siddiq Al-Minshawi', folders: ['Minshawy_Murattal_128kbps'], qdc: true },
   { id: 'muaiqly', name: 'Maher Al-Muaiqly', folders: ['MaherAlMuaiqly128kbps', 'Maher_AlMuaiqly_64kbps'] },
   { id: 'tunaiji', name: 'Khalifa Al-Tunaiji', folders: ['khalefa_al_tunaiji_64kbps'] },
   { id: 'ayyub', name: 'Muhammad Ayyub', folders: ['Muhammad_Ayyoub_128kbps', 'Muhammad_Ayyoub_64kbps'] },
@@ -77,16 +84,45 @@ const recordedCount = (r: Reciter, surah: number) => {
 // ------------------------------------------------------------------ one file per surah
 
 const timingJobs = new Map<string, Promise<Record<string, number[]>>>();
+/** quran.com recordings found for a reciter: the address of each surah's file. */
+const qdcFiles = new Map<string, string>();
+const timingsUrl = (r: Reciter) => (r.gapless ? r.gapless.timings : `data/timings/qdc-${r.id}.json`);
 /** Ayah start times (ms) per surah, with the surah's end time last. */
 function timings(r: Reciter): Promise<Record<string, number[]>> {
   let job = timingJobs.get(r.id);
   if (!job) {
-    job = fetch(r.gapless!.timings).then((res) => { if (!res.ok) throw new Error(); return res.json(); });
-    job.catch(() => timingJobs.delete(r.id));
+    job = fetch(timingsUrl(r)).then(async (res) => {
+      if (!res.ok) throw new Error();
+      const t = await res.json();
+      if (typeof t.url === 'string') { qdcFiles.set(r.id, t.url); delete t.url; }
+      return t;
+    });
+    job.catch(() => { if (!r.qdc) timingJobs.delete(r.id); });
     timingJobs.set(r.id, job);
   }
   return job;
 }
+// Find out straight away which reciters have quran.com's word-timed recordings.
+const qdcChecks = new Map<string, Promise<boolean>>();
+for (const r of RECITERS.filter((x) => x.qdc)) qdcChecks.set(r.id, timings(r).then(() => true, () => false));
+/** Plays one file per surah (with ayah times), rather than one per ayah. */
+const wholeSurah = (r: Reciter) => !!r.gapless || qdcFiles.has(r.id);
+async function settled(r: Reciter): Promise<void> { await qdcChecks.get(r.id); }
+
+const wordJobs = new Map<string, Promise<Record<string, [number, number, number][]>>>();
+/** When each word starts and ends (ms, in the surah file), if known. */
+function wordTimes(r: Reciter, surah: number): Promise<Record<string, [number, number, number][]>> | null {
+  if (!qdcFiles.has(r.id)) return null;
+  const k = `${r.id}/${surah}`;
+  let job = wordJobs.get(k);
+  if (!job) {
+    job = fetch(`data/words/${r.id}/${surah}.json`).then((res) => { if (!res.ok) throw new Error(); return res.json(); });
+    job.catch(() => wordJobs.delete(k));
+    wordJobs.set(k, job);
+  }
+  return job;
+}
+const loadedWords = new Map<string, Record<string, [number, number, number][]>>();
 
 /**
  * Where an ayah sits in a one-file-per-surah recording: which surah's file,
@@ -108,10 +144,15 @@ async function segment(r: Reciter, surah: number, ayah: number, basmalah: boolea
 }
 
 const surahFile = (surah: number) => `${String(surah).padStart(3, '0')}.mp3`;
+const surahUrl = (r: Reciter, surah: number) => {
+  const t = qdcFiles.get(r.id);
+  if (t) return t.replace('{sss}', String(surah).padStart(3, '0')).replace('{s}', String(surah));
+  return r.gapless!.base + surahFile(surah);
+};
 
 /** Web addresses to try for one ayah, the one that worked last time first. */
 function addresses(r: Reciter, surah: number, ayah: number): string[] {
-  if (r.gapless) return [r.gapless.base + surahFile(surah)];
+  if (wholeSurah(r)) return [surahUrl(r, surah)];
   const real = fileAyah(r, surah, ayah);
   if (real === null) return [];
   ayah = real;
@@ -124,7 +165,7 @@ const rememberBase = (r: Reciter, url: string) => store.set(`recite-base-${r.id}
 
 /** The key a saved recording is kept under, whichever address it came from. */
 const savedKey = (r: Reciter, surah: number, ayah: number) =>
-  new Request(`${location.origin}/__recitation/${r.id}/${r.gapless ? surahFile(surah) : file(surah, ayah)}`);
+  new Request(`${location.origin}/__recitation/${r.id}${qdcFiles.has(r.id) ? '-qdc' : ''}/${wholeSurah(r) ? surahFile(surah) : file(surah, ayah)}`);
 
 async function savedBlob(r: Reciter, surah: number, ayah: number): Promise<Blob | null> {
   if (!('caches' in window)) return null;
@@ -147,9 +188,9 @@ export async function listDownloads(): Promise<SurahDownload[]> {
     const m = req.url.match(/__recitation\/([^/]+)\/(\d{3})(\d{3})?\.mp3$/);
     if (!m) continue;
     const surah = Number(m[2]);
-    const id = `${m[1]}:${surah}`;
+    const id = `${m[1].replace(/-qdc$/, '')}:${surah}`;
     // A whole-surah file counts as the whole surah.
-    const entry = found.get(id) ?? { reciter: m[1], surah, saved: 0, total: m[3] ? recordedCount(reciterById(m[1]), surah) : 1, bytes: 0 };
+    const entry = found.get(id) ?? { reciter: m[1].replace(/-qdc$/, ''), surah, saved: 0, total: m[3] ? recordedCount(reciterById(m[1].replace(/-qdc$/, '')), surah) : 1, bytes: 0 };
     entry.saved++;
     const res = await cache.match(req);
     entry.bytes += Number(res?.headers.get('content-length')) || 0;
@@ -171,6 +212,7 @@ export const downloadProgress = (reciter: string, surah: number) => downloading.
 export async function downloadSurah(reciterId: string, surah: number, progress: (done: number, total: number) => void): Promise<string | null> {
   if (!('caches' in window)) return 'This browser can’t save recordings.';
   const r = reciterById(reciterId);
+  await settled(r);
   const total = getChapter(surah)?.verses_count ?? 0;
   const job = { done: 0, total, stop: false };
   downloading.set(`${r.id}:${surah}`, job);
@@ -180,7 +222,7 @@ export async function downloadSurah(reciterId: string, surah: number, progress: 
   const needsBasmalah = surah !== 1 && surah !== 9;
   let list: [number, number][] = [...(needsBasmalah ? [[1, 1] as [number, number]] : []),
     ...Array.from({ length: total }, (_, i) => [surah, i + 1] as [number, number])];
-  if (r.gapless) {
+  if (wholeSurah(r)) {
     // One file for the surah (and Al-Fatihah's, if the basmalah comes from there).
     const b = needsBasmalah ? await segment(r, surah, 1, true).catch(() => null) : null;
     list = [[surah, 1], ...(b && b.file === 1 ? [[1, 1] as [number, number]] : [])];
@@ -221,7 +263,8 @@ export function stopDownload(reciterId: string, surah: number): void {
 export async function deleteDownload(reciterId: string, surah: number): Promise<void> {
   const cache = await caches.open(SAVED);
   for (const req of await cache.keys()) {
-    if (req.url.includes(`/__recitation/${reciterId}/${String(surah).padStart(3, '0')}`)) await cache.delete(req);
+    const n = String(surah).padStart(3, '0');
+    if (req.url.includes(`/__recitation/${reciterId}/${n}`) || req.url.includes(`/__recitation/${reciterId}-qdc/${n}`)) await cache.delete(req);
   }
 }
 
@@ -262,9 +305,13 @@ let continuing = false;
 /** For one-file-per-surah reciters: where the current ayah starts (seconds). */
 let segmentStart = 0;
 
-type ProgressFn = (key: string, fraction: number) => void;
+/**
+ * How far through the current ayah the recitation is (0 to 1), several times
+ * a second; and, where the reciter's word timings are known, how many of the
+ * ayah's words have been started.
+ */
+type ProgressFn = (key: string, fraction: number, words?: number) => void;
 const progressFns = new Set<ProgressFn>();
-/** How far through the current ayah the recitation is (0 to 1), a few times a second. */
 export function onProgress(fn: ProgressFn): () => void { progressFns.add(fn); return () => progressFns.delete(fn); }
 function emitProgress(): void {
   if (!now || now.basmalah || !progressFns.size) return;
@@ -274,8 +321,22 @@ function emitProgress(): void {
   if (!Number.isFinite(end) || end <= start) return;
   const fraction = Math.min(1, Math.max(0, (t - start) / (end - start)));
   const key = `${now.surah}:${now.ayah}`;
-  progressFns.forEach((fn) => fn(key, fraction));
+  let words: number | undefined;
+  const r = reciterById(now.plan.reciter);
+  if (audio.dataset.file && qdcFiles.has(r.id)) {
+    const k = `${r.id}/${now.surah}`;
+    const known = loadedWords.get(k);
+    if (known) {
+      // A word shows as it begins (a moment early, so it's there as it's heard).
+      const ms = t * 1000 + 120;
+      const segs = known[key];
+      if (segs) words = segs.filter(([, from]) => from <= ms).reduce((n, [w]) => Math.max(n, w), 0);
+    } else void wordTimes(r, now.surah)?.then((w) => loadedWords.set(k, w), () => undefined);
+  }
+  progressFns.forEach((fn) => fn(key, fraction, words));
 }
+// Several times a second while playing (timeupdate alone is too coarse to follow words).
+window.setInterval(() => { if (now?.playing && !audio.paused) emitProgress(); }, 100);
 
 const tell = (error?: string) => listeners.forEach((fn) => fn(now, error));
 export const nowPlaying = () => now;
@@ -361,7 +422,9 @@ async function start(): Promise<void> {
   }
 
   between = false;
-  if (r.gapless) { await startSegment(r, s, a, mine); return; }
+  await settled(r);
+  if (mine !== token || !now) return;
+  if (wholeSurah(r)) { await startSegment(r, s, a, mine); return; }
 
   const blob = await savedBlob(r, s, a);
   if (mine !== token) return;
