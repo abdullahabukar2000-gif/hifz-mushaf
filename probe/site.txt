@@ -1,8 +1,9 @@
-publish run: success b3f62abe31f52d633e3baad028d3c6f0da3307f7
+publish run: success 77249d2d0f23fc72d2c12fe476563fae49e852c0
 200 1869 
 200 45777 data/timings/qdc-alafasy.json
 200 46818 data/timings/qdc-husary.json
 200 45648 data/timings/qdc-minshawi.json
+200 45575 data/timings/qdc-tunaiji.json
 200 9506 data/words/alafasy/14.json
 200 14384 data/words/husary/14.json
 200 13801 data/words/minshawi/14.json
