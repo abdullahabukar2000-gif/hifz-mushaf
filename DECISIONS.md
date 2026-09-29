@@ -265,3 +265,13 @@
 
 - Verse by verse is centred (Arabic lines and English). The surah name sits in the
   middle of its frame. On wide screens the top and bottom bars line up with the page.
+
+# Smaller meaning boxes; no sideways scrolling
+
+- scripts/align-auto.py cuts the translation finer (pieces over 3 words are cut again
+  before a preposition, "of", "that", "the", an auxiliary verb...), and joins two groups
+  far apart only on two separate clues (one loose match, like "protecting" and
+  "protector", used to merge everything in between into one huge box). Ar-Ra'd: boxes
+  average 3.2 words (was 4.3), biggest 24 (was 35); whole Quran: biggest 63 (was 120).
+  Pieces are still exact slices of the translation; the hand-checked groups are kept.
+- A box too long for the screen wraps inside itself; verse by verse can't scroll sideways.

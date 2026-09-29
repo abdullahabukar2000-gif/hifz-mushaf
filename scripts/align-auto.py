@@ -56,6 +56,17 @@ CLAUSE_WORDS = set('''and but so then who whom which whoever whatever when whene
 except unless or yet before after because since though although where lest'''.split())
 
 PREPOSITIONS = set('''in from with to on for by into upon over against among through without about'''.split())
+# Where a longer piece may be cut again, and how long "longer" is.
+SPLIT_BEFORE = PREPOSITIONS | {'of', 'that', 'the', 'those', 'is', 'are', 'was', 'were', 'will', 'shall', 'has', 'have', 'had'}
+LONG = int(os.environ.get('ALIGN_LONG', 3))
+SIDE = int(os.environ.get('ALIGN_SIDE', 2))
+# How much a word prefers the part of the translation at the same point in the ayah.
+POSITION = float(os.environ.get('ALIGN_POSITION', 0.6))
+# A stray word joins the group around it if its own group is at least this many times bigger.
+STRAY = int(os.environ.get('ALIGN_STRAY', 4))
+UNIQUE_ONLY = os.environ.get('ALIGN_UNIQUE', '1') == '1'
+# Clues needed to join a group far away (see misplaced()).
+FAR_CLUES = int(os.environ.get('ALIGN_FAR', 2))
 
 
 def norm(word):
@@ -109,14 +120,16 @@ def cut(text):
         if p > start:
             bounds.append([start, p])
             start = p
-    # Long pieces are cut again before a preposition, so blocks stay short.
+    # Longer pieces are cut again before a preposition (or "to", "of"), so
+    # blocks stay short: a few Arabic words to a few English words.
     finer = []
     for start, end in bounds:
-        if len(text[start:end].split()) > 6:
-            for m in re.finditer(r'(?<= )(\S+)', text[start:end]):
-                at = start + m.start()
-                if norm(m.group(1)) in PREPOSITIONS and m.group(1)[0].islower() \
-                        and len(text[start:at].split()) >= 3 and len(text[at:end].split()) >= 3:
+        if len(text[start:end].split()) > LONG:
+            piece_start = start
+            for m in re.finditer(r'(?<= )(\S+)', text[piece_start:end]):
+                at = piece_start + m.start()
+                if norm(m.group(1)) in SPLIT_BEFORE and m.group(1)[0].islower() \
+                        and len(text[start:at].split()) >= SIDE and len(text[at:end].split()) >= SIDE:
                     finer.append([start, at])
                     start = at
         finer.append([start, end])
@@ -158,7 +171,7 @@ def align(key):
             hits = sum(1 for x in gw if any(same(x, y) for y in pw))
             if not hits:
                 continue
-            score = hits / len(gw) - 0.6 * abs(mid[p] - where)
+            score = hits / len(gw) - POSITION * abs(mid[p] - where)
             if score > best_score:
                 best, best_score = p, score
         home[i] = best
@@ -217,9 +230,9 @@ def align(key):
                 in_b = [i for i in range(span[b][0], span[b][1] + 1) if find(home[i]) == a]
                 size_a = sum(1 for h in home if find(h) == a)
                 size_b = sum(1 for h in home if find(h) == b)
-                if in_a and len(in_a) <= max(1, size_b // 4) and size_b > len(in_a):
+                if in_a and len(in_a) <= max(1, size_b // STRAY) and size_b > len(in_a):
                     for i in in_a: home[i] = a
-                elif in_b and len(in_b) <= max(1, size_a // 4) and size_a > len(in_b):
+                elif in_b and len(in_b) <= max(1, size_a // STRAY) and size_a > len(in_b):
                     for i in in_b: home[i] = b
                 else:
                     parent[find(b)] = find(a)
@@ -241,25 +254,40 @@ def align(key):
     groups = [[span[r][0], span[r][1], [p for p in range(len(pieces)) if find(p) == r]] for r in roots]
     def hits(words, pool):
         return sum(1 for x in words if any(same(x, y) for y in pool))
+    # Words that turn up more than once (Allah, Lord, them...) can't show where
+    # anything belongs, so they're left out of this check.
+    from collections import Counter
+    en_count = Counter(w for pw in piece_words for w in pw)
+    ar_count = Counter(w for gw in gloss_words for w in gw)
+    def telling(w, counter):
+        return not UNIQUE_ONLY or sum(c for x, c in counter.items() if same(x, w)) <= 1
     def misplaced(g):
-        """Another group that holds words this group's words clearly belong with, or None."""
+        """Another group that holds words this group's words clearly belong with, or None.
+
+        A group next to this one needs one such word; a group further away needs
+        two (one loose match, like "protecting" and "protector", would otherwise
+        join everything in between into one big block).
+        """
         lo, hi, ps = groups[g]
         en = [w for p in ps for w in piece_words[p]]
+        ar = [w for i in range(lo, hi + 1) for w in gloss_words[i]]
         for h, (lo2, hi2, ps2) in enumerate(groups):
             if h == g:
                 continue
             en2 = [w for p in ps2 for w in piece_words[p]]
+            ar2 = [w for i in range(lo2, hi2 + 1) for w in gloss_words[i]]
+            clues = 0
             # An Arabic word here whose English is only over there...
             for i in range(lo, hi + 1):
-                gw = gloss_words[i]
+                gw = [w for w in gloss_words[i] if telling(w, en_count)]
                 if gw and not hits(gw, en) and hits(gw, en2) * 2 >= len(gw):
-                    return h
+                    clues += 1
             # ...or an English word here that only translates Arabic over there.
-            ar = [w for i in range(lo, hi + 1) for w in gloss_words[i]]
-            ar2 = [w for i in range(lo2, hi2 + 1) for w in gloss_words[i]]
-            for y in en:
-                if not hits([y], ar) and hits([y], ar2):
-                    return h
+            for y in set(en):
+                if telling(y, ar_count) and not hits([y], ar) and hits([y], ar2):
+                    clues += 1
+            if clues >= (1 if abs(h - g) == 1 else FAR_CLUES):
+                return h
         return None
     g = 0
     while g < len(groups) and len(groups) > 1:

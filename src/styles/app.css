@@ -298,6 +298,7 @@ body:is([data-view='mushaf'], [data-view='verses']) #topbar :is(#hide, #listen) 
 #stage[data-view='verses'] {
   display: block;
   overflow-y: auto;
+  overflow-x: hidden;
   container-type: normal;
   padding-bottom: 2rem;
 }
@@ -365,10 +366,15 @@ body:is([data-view='mushaf'], [data-view='verses']) #topbar :is(#hide, #listen) 
 }
 
 /* A box and the edge after it stay together when the line wraps. */
-.box-unit { display: inline-flex; align-items: stretch; }
+.box-unit { display: inline-flex; align-items: stretch; max-width: 100%; }
 
 .box {
   display: inline-flex;
+  /* A long group wraps inside its box rather than running off the screen. */
+  flex-wrap: wrap;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
   gap: 0.24em;
   padding: 0 0.22em;
   font: inherit;
