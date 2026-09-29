@@ -68,8 +68,32 @@ function applyMood(): void {
   else document.documentElement.dataset.mood = prefs.mood;
 }
 
+// Wide screens: the top bar and the tabs line up with what's on the page (the
+// mushaf page, the verse column, the surah list), whatever its width.
+const topbar = document.querySelector<HTMLElement>('#topbar')!;
+const tabBar = document.querySelector<HTMLElement>('#tabs')!;
+function alignBars(): void {
+  if (innerWidth < 900) { topbar.style.paddingInline = ''; tabBar.style.paddingInline = ''; return; }
+  const boxes = [...stage.querySelectorAll<HTMLElement>('.page, .verses, #stage > :not(.strip)')]
+    .map((e) => e.getBoundingClientRect())
+    .filter((b) => b.width > 0 && b.right > 0 && b.left < innerWidth && b.width < innerWidth - 40);
+  if (!boxes.length) { topbar.style.paddingInline = ''; tabBar.style.paddingInline = ''; return; }
+  const left = Math.min(...boxes.map((b) => b.left));
+  const right = innerWidth - Math.max(...boxes.map((b) => b.right));
+  const side = Math.max(16, Math.min(left, right));
+  topbar.style.paddingInline = `${side}px`;
+  tabBar.style.paddingInline = `${side}px`;
+}
+addEventListener('resize', () => requestAnimationFrame(alignBars));
+void document.fonts?.ready.then(() => alignBars());
+window.setTimeout(alignBars, 1500);
+new ResizeObserver(() => requestAnimationFrame(alignBars)).observe(stage);
+new MutationObserver(() => requestAnimationFrame(alignBars)).observe(stage, { childList: true });
+stage.addEventListener('scroll', () => requestAnimationFrame(alignBars), { passive: true });
+
 function updateChrome(): void {
   document.body.dataset.view = view;
+  requestAnimationFrame(() => requestAnimationFrame(alignBars));
   stage.dataset.view = view;
   stage.dataset.layout = layout;
   tabs.forEach((t) => {
@@ -237,6 +261,7 @@ function offsetOf(local: number): number {
 /** Put slot `index` (of all slots) on screen, with its neighbours either side. */
 let placing = 0;
 function showSlot(index: number): void {
+  requestAnimationFrame(() => requestAnimationFrame(alignBars));
   const all = slotsOf();
   index = Math.min(Math.max(index, 0), all.length - 1);
   const from = Math.max(0, index - AROUND);

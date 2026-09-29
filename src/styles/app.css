@@ -737,9 +737,3 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 .hide-arabic :is(.w, .vw).heard, .hide-arabic .w.peek { animation: fill-in 0.25s ease-out; }
 @keyframes fill-in { from { opacity: 0.2; } to { opacity: 1; } }
 #topbar #hide[aria-pressed='true'] { color: var(--accent-ink); background: var(--accent-wash); }
-
-/* Wide screens: the bars line up with the page, not the window's edges. */
-@media (min-width: 900px) {
-  #topbar { padding-inline: max(16px, calc((100vw - 780px) / 2)); }
-  #tabs { padding-inline: max(8px, calc((100vw - 760px) / 2)); }
-}
