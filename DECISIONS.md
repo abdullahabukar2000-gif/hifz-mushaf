@@ -290,3 +290,18 @@
   above at build time, and the app estimates only for the rest. Results are committed in
   data/words-aligned/. First try (CTC forced alignment to the model's token table) failed:
   the model often writes harakat, the table has none.
+
+# Ayah starts checked by listening (quran.com recordings)
+
+quran.com's published ayah times are off in places (Minshawi's Ar-Ra'd starts
+~10 s early, so an ayah began with the previous one's ending; Tunaiji's Yunus,
+Ar-Ra'd and Al-Jinn drift; his Ibrahim has none). `scripts/retime-surah.py`
+listens to each whole-surah file (Tilawi FastConformer) and checks every
+published start: it is kept when the ayah's opening letters are heard there,
+and moved only when the opening is heard close by — forward when what comes
+before it is the previous ayah's ending (or a short pause), back by at most
+5 s. This keeps it off look-alike openings elsewhere in the surah. Only where
+there are no published times is the start found by listening alone.
+`scripts/apply-retimed.py` applies the results at build time. Tunaiji 14:37's
+opening fell where two listening chunks meet; its start was set by hand just
+after 14:36's last letter (noted in its file as `by_hand`).

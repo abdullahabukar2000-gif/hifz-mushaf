@@ -1,12 +1,13 @@
 # Where each ayah really is in a whole-surah recording, found by listening.
 #
-# Some published ayah times are wrong (quran.com's for Khalifa Al-Tunaiji: Yunus
-# drifts from about ayah 24, Ar-Ra'd 1-5 point at the wrong audio). This listens
-# to the whole surah file with the speech model (in overlapping pieces), then
-# walks through the surah ayah by ayah, lining up each ayah's letters with what
-# was heard just after the previous ayah. Each ayah starts a moment before its
-# first letter is heard; each word likewise. Every ayah is scored (share of its
-# letters heard); a surah is only used if every ayah scores well.
+# Some published ayah times are wrong (quran.com's: Khalifa Al-Tunaiji's Yunus
+# drifts from about ayah 24; Minshawi's Ar-Ra'd starts most ayahs seconds early,
+# so the tail of the ayah before plays first). This listens to the whole surah
+# file with the speech model (in overlapping pieces) and checks every published
+# ayah start: if the ayah's opening letters are heard right after it, it stays;
+# if they're heard later, the ayah starts just before them; if they aren't near
+# it at all, the ayah is looked for around there (each ayah on its own, so one
+# hard ayah can't throw the others off) and starts where its letters are heard.
 #
 #   python3 scripts/retime-surah.py <reciter> <part>/<parts>
 # Reads the recording addresses from public/data/timings/qdc-<reciter>.json
@@ -101,6 +102,17 @@ def match(want, window):
     for blk in sm.get_matching_blocks():
         if blk.size >= 3 or (blk.size and len(want) <= 6):
             for j in range(blk.size): at[blk.a + j] = blk.b + j
+    # Letters just before a match that were written a little differently (the
+    # mushaf's يَٰٓأَيُّهَا has one alif fewer than "يا أيها"): walk back from each
+    # matched letter and take the same letter one or two places earlier.
+    heard_letters = [c for c, _ in window]
+    for i in range(len(want) - 2, -1, -1):
+        if at[i] is None and at[i + 1] is not None:
+            for back in (1, 2):
+                j = at[i + 1] - back
+                if j >= 0 and heard_letters[j] == want[i] and (i == 0 or at[i - 1] is None or at[i - 1] < j):
+                    at[i] = j
+                    break
     return at, sum(1 for x in at if x is not None) / len(want)
 
 def place(want, owner, nwords, heard, cursor):
@@ -191,6 +203,74 @@ def anchored(s, heard, duration):
         prev_end = starts[-1] + 0.3
     return times, scores, words_out
 
+def opening(want, heard, lo, hi):
+    """When an ayah's opening letters (`want`, its first few) are heard between
+    lo and hi (s): the first of them, or None."""
+    near = [(c, t) for c, t in heard if lo <= t <= hi]
+    if len(want) < 3 or not near: return None
+    sm = difflib.SequenceMatcher(None, want, [c for c, _ in near], autojunk=False)
+    m = sm.find_longest_match(0, len(want), 0, len(near))
+    if m.size < 3 or m.a > 2: return None
+    b = m.b
+    for i in range(m.a - 1, -1, -1):          # opening letters just before the match
+        for back in (1, 2):
+            if b - back >= 0 and near[b - back][0] == want[i]: b -= back; break
+    return near[b][1]
+
+def opens_at(want, heard, t):
+    """How well the ayah's opening matches what's heard just after t (0-1)."""
+    if t is None: return 0.0
+    near = [c for c, x in heard if t <= x < t + 3.0][:len(want) + 4]
+    return difflib.SequenceMatcher(None, want, near, autojunk=False).ratio() if near else 0.0
+
+def checked(s, heard, found, scores):
+    """Keep each published start whose ayah's opening is heard right there;
+    change only the others, to a start where the opening clearly is heard:
+
+    - the tail of the ayah before is heard first (published too early): just
+      before the opening, found after that tail;
+    - a pause, then the opening, within 6 s: just before the opening;
+    - the opening was already under way (published too late): up to 5 s back;
+    - no published time at all: where listening found the ayah.
+
+    Anything unclear stays as published. Returns the times and the ayahs changed."""
+    pub = src.get(str(s))
+    n = verses[s]
+    out, fixed = [], []
+    for a in range(1, n + 1):
+        want = [ch for w in ayah_words[f'{s}:{a}'][:2] for ch in letters(w)][:6]
+        prev_end = [ch for w in ayah_words[f'{s}:{a - 1}'][-3:] for ch in letters(w)] if a > 1 else []
+        before = out[-1] if out and out[-1] is not None else 0.0
+        p = pub[a - 1] / 1000 if pub else None
+        if p is not None and opens_at(want, heard, p) >= 0.5:
+            out.append(p); continue                     # right as published
+        candidates = []
+        if p is not None:
+            # The opening nearest the published start first, then further out.
+            st = opening(want, heard, p - 1.5, p + 6.0)
+            if st is None: st = opening(want, heard, p - 5.0, p + 30.0)
+            if st is not None and st >= p:
+                between = [c for c, t in heard if p <= t < st - 0.15]
+                tail = difflib.SequenceMatcher(None, between[-12:], prev_end[-12:], autojunk=False).ratio() if prev_end and between else 0
+                # Close by, with at most a pause before it; or further on, after the tail of the ayah before.
+                if (st <= p + 6.0 and len(between) < 3) or tail >= 0.5: candidates.append(st)
+            elif st is not None and p - st <= 5.0 and st > before + 0.5:
+                candidates.append(st)
+        elif found[a - 1] is not None and scores[a - 1] >= 0.8:
+            # No published time: where listening found the ayah.
+            f = found[a - 1] + LEAD
+            st = opening(want, heard, f - 3.0, f + 6.0)
+            if st is not None and st > before + 0.5: candidates.append(st)
+        good = [c for c in candidates if opens_at(want, heard, max(0.0, c - 0.05)) >= 0.6]
+        if good:
+            c = min(good, key=lambda x: abs(x - p) if p is not None else x)
+            out.append(max(0.0, c - LEAD)); fixed.append(a)
+        else:
+            out.append(p if p is not None else found[a - 1])   # can't tell: as published
+    for i in range(1, n):                               # never out of order
+        if out[i] is None or (out[i - 1] is not None and out[i] < out[i - 1]): out[i] = out[i - 1]
+    return out, fixed
+
 src = json.load(open(f'public/data/timings/qdc-{reciter}.json'))
 url_of = lambda s: src['url'].replace('{sss}', f'{s:03d}').replace('{s}', str(s))
 weights = [sum(len(ayah_words.get(f'{s}:{a}', [])) for a in range(1, verses[s] + 1)) for s in range(1, 115)]
@@ -218,18 +298,17 @@ for s in mine:
         json.dump({'letters': ''.join(c for c, _ in heard), 'times': [round(t, 2) for _, t in heard], 'duration': duration},
                   open(f'probe/heard/{reciter}/{s}.json', 'w'), separators=(',', ':'))
     times, scores, words_out = anchored(s, heard, duration)
+    times, fixed = checked(s, heard, times, scores)
     # Ayah times in ms (each ayah ends where the next starts; the last at the file's end).
-    ms = [None if t is None else round(t * 1000) for t in times] + [round(duration * 1000)]
+    ms = [round(t * 1000) for t in times] + [round(duration * 1000)]
+    # Word times only for the ayahs whose start changed (the others keep theirs).
     words_json = {}
-    for a in range(1, verses[s] + 1):
+    for a in fixed:
         key, st = f'{s}:{a}', words_out[f'{s}:{a}']
         if st is None: continue
-        nxt = next((t for t in ms[a:] if t is not None), ms[-1])
-        ends = [round(x * 1000) for x in st[1:]] + [nxt]
+        st = [max(x, ms[a - 1] / 1000 + LEAD) for x in st]
+        ends = [round(x * 1000) for x in st[1:]] + [ms[a]]
         words_json[key] = [[i + 1, round(b * 1000), max(round(b * 1000), e)] for i, (b, e) in enumerate(zip(st, ends))]
-    old = src.get(str(s))
-    shift = [abs(ms[i] - old[i]) for i in range(len(ms) - 1) if old and ms[i] is not None and i < len(old)]
-    json.dump({'times': ms, 'scores': scores, 'words': words_json}, open(f'data/timings-retimed/{reciter}/{s}.json', 'w'), separators=(',', ':'))
-    low = [f'{s}:{a + 1} ({x})' for a, x in enumerate(scores) if x < 0.8]
-    print(f'surah {s}: {len(scores)} ayahs, lowest score {min(scores):.2f}, below 0.8: {low[:12]}{" ..." if len(low) > 12 else ""};'
-          f' differs from the published times by up to {max(shift) / 1000 if shift else 0:.1f} s (median {np.median(shift) / 1000 if shift else 0:.2f} s)', flush=True)
+    json.dump({'times': ms, 'scores': scores, 'fixed': fixed, 'published': bool(src.get(str(s))), 'words': words_json},
+              open(f'data/timings-retimed/{reciter}/{s}.json', 'w'), separators=(',', ':'))
+    print(f'surah {s}: {len(fixed)} of {len(scores)} ayah starts corrected: {fixed[:20]}{" ..." if len(fixed) > 20 else ""}', flush=True)
