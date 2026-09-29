@@ -1,19 +1,20 @@
 # Word timings for reciters that have none published, found by listening to
 # their recordings: an open Quran speech model (Tilawi's FastConformer,
-# CC-BY-4.0) hears each ayah, and the ayah's known words are lined up against
-# what it hears (CTC forced alignment). That gives the time each word starts
-# and ends in the very file the app plays. Nothing is guessed from word
-# lengths; an ayah that doesn't line up with confidence is left out (the app
-# then estimates for that ayah only), and the report says how many.
+# CC-BY-4.0) hears each ayah, and the letters it hears are lined up with the
+# ayah's own words (harakat and tajweed marks set aside on both sides), so each
+# word starts when its first letter is heard, in the very file the app plays.
+# Nothing is guessed from word lengths; each ayah gets a score (the share of its
+# letters heard), and one heard too poorly is left out (the app then estimates
+# for that ayah only). The report says how many.
 #
-# Runs on GitHub Actions (scripts need the model and the recordings):
+# Runs on GitHub Actions (the model and the recordings aren't reachable here):
 #   python3 scripts/align-words.py <reciter> <part>/<parts> [--missing-only]
 # Writes data/words-aligned/<reciter>/<surah>.json:
-#   {"_base": "qdc" | "sufi" | "everyayah", "<s>:<a>": [[word, start ms, end ms], ...]}
+#   {"_base": "qdc" | "sufi" | "everyayah", "_scores": {...}, "<s>:<a>": [[word, start ms, end ms], ...]}
 # where times are in the surah file (qdc, sufi) or in the ayah's own file
 # (everyayah).
 
-import glob, json, os, subprocess, sys, tempfile, time, urllib.request
+import difflib, glob, json, os, subprocess, sys, tempfile, time, urllib.request
 import numpy as np
 import onnxruntime as ort
 
@@ -22,10 +23,10 @@ part, parts = map(int, sys.argv[2].split('/'))
 missing_only = '--missing-only' in sys.argv
 ASSETS = os.environ.get('ALIGN_ASSETS', 'align-assets')
 RATE = 16000
-# Mean log-prob per frame along the matched path: kept for every ayah (in
-# "_scores"), so the cut-off can be chosen afterwards (scripts/merge-words.py);
-# only hopeless matches are dropped here.
-MIN_SCORE = float(os.environ.get('ALIGN_MIN_SCORE', '-4'))
+# Share of the ayah's letters heard (0-1): kept for every ayah (in "_scores"),
+# so the cut-off can be chosen afterwards (scripts/merge-words.py); only
+# hopeless matches are dropped here.
+MIN_SCORE = float(os.environ.get('ALIGN_MIN_SCORE', '0.4'))
 
 EVERYAYAH = {'muaiqly': 'MaherAlMuaiqly128kbps', 'ayyub': 'Muhammad_Ayyoub_128kbps', 'tunaiji': 'khalefa_al_tunaiji_64kbps'}
 # Where everyayah's numbering is off: the file that holds each ayah (see src/recite.ts FILE_FIXES).
@@ -50,96 +51,87 @@ def decode(data):
 # ---------------------------------------------------------------- text
 vocab = {int(k): v for k, v in json.load(open(f'{ASSETS}/vocab.json')).items()}
 BLANK = 1024
-# Keyed "surah:ayah:ayah" (a range of one ayah).
-tokens = {k.rsplit(':', 1)[0]: v for k, v in json.load(open(f'{ASSETS}/quran_ctc_tokens.json')).items() if k.split(':')[1] == k.split(':')[2]}
-counts = {}
-for f in glob.glob('public/data/pages-*.json'):
+# The ayah's words: the app's own mushaf text (so the words are exactly the ones on screen).
+ayah_words = {}
+for f in sorted(glob.glob('public/data/pages-*.json')):
     for page in json.load(open(f)).values():
         for line in page['lines']:
             for w in line['words']:
-                if w['type'] == 'word': counts[w['verseKey']] = counts.get(w['verseKey'], 0) + 1
+                if w['type'] == 'word': ayah_words.setdefault(w['verseKey'], {})[w['pos']] = w['uthmani']
+ayah_words = {k: [v[p] for p in sorted(v)] for k, v in ayah_words.items()}
 verses = {c['id']: c['verses_count'] for c in json.load(open('data/chapters.json'))['chapters']}
 
-def words_of(ids):
-    """Token ids grouped into words (a new word starts at a piece beginning with ▁).
-    Every token is kept: the model hears each one."""
-    words = []
-    for i in ids:
-        if vocab.get(i, '').startswith('\u2581') or not words: words.append([])
-        words[-1].append(i)
-    return words
-
-BASMALAH = words_of(tokens['1:1'])
+# Letters only: harakat, tajweed marks and small signs dropped, letter forms
+# unified, so what the model writes (with or without harakat) and the mushaf's
+# spelling compare letter for letter.
+MARKS = set(chr(c) for c in list(range(0x0610, 0x061B)) + list(range(0x064B, 0x0660)) + [0x0670] + list(range(0x06D6, 0x06EE)) + [0x0640])
+UNIFY = {'أ': 'ا', 'إ': 'ا', 'آ': 'ا', 'ٱ': 'ا', 'ى': 'ي', 'ئ': 'ي', 'ؤ': 'و', 'ة': 'ه', 'ۥ': '', 'ۦ': ''}
+def letters(text):
+    out = []
+    for ch in text:
+        if ch in MARKS: continue
+        ch = UNIFY.get(ch, ch)
+        if ch and 'ء' <= ch <= 'ي': out.append(ch)
+    return out
 
 # ---------------------------------------------------------------- model
 opts = ort.SessionOptions()
 opts.intra_op_num_threads = os.cpu_count() or 4
 model = ort.InferenceSession(f'{ASSETS}/fastconformer_full_mixed.onnx', opts, providers=['CPUExecutionProvider'])
 
-def logprobs(pcm):
+def hear(pcm):
+    """What the model hears: its letters, each with the frame it was first heard, and the frame length (s)."""
     out = model.run(None, {'audio_signal': pcm[None, :].astype(np.float32), 'length': np.array([len(pcm)], dtype=np.int64)})[0][0]
-    # As log-probabilities (a no-op if they already are).
-    out = out - np.log(np.exp(out - out.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True)) - out.max(axis=1, keepdims=True)
-    return out  # [T, vocab]
-
-def heard(lp):
-    """What the model hears (greedy), for the log."""
-    ids, prev = [], -1
-    for i in lp.argmax(axis=1):
-        if i != prev and i != BLANK: ids.append(int(i))
+    best = out.argmax(axis=1)
+    heard, prev = [], -1
+    for t, i in enumerate(best):
+        i = int(i)
+        if i != prev and i != BLANK:
+            for ch in letters(vocab.get(i, '')): heard.append((ch, t))
         prev = i
-    return ''.join(vocab.get(i, '') for i in ids).replace('\u2581', ' ').strip()
-
-def force_align(lp, labels):
-    """CTC Viterbi: the frame span of each label, and the path's mean log-prob per frame."""
-    T, L = lp.shape[0], len(labels)
-    S = 2 * L + 1
-    lab = np.full(S, BLANK); lab[1::2] = labels
-    skip = np.zeros(S, dtype=bool)
-    skip[3::2] = np.array(labels[1:]) != np.array(labels[:-1])
-    if T < L: return None, -99
-    NEG = -1e30
-    alpha = np.full(S, NEG); alpha[0] = lp[0, BLANK]; alpha[1] = lp[0, lab[1]]
-    back = np.zeros((T, S), dtype=np.int8)
-    for t in range(1, T):
-        a0 = alpha
-        a1 = np.concatenate(([NEG], alpha[:-1]))
-        a2 = np.where(skip, np.concatenate(([NEG, NEG], alpha[:-2])), NEG)
-        stack = np.stack([a0, a1, a2])
-        choice = np.argmax(stack, axis=0)
-        alpha = stack[choice, np.arange(S)] + lp[t, lab]
-        back[t] = choice
-    end = S - 1 if alpha[S - 1] >= alpha[S - 2] else S - 2
-    score = alpha[end] / T
-    spans = [[None, None] for _ in range(L)]
-    s = end
-    for t in range(T - 1, -1, -1):
-        if s % 2 == 1:
-            k = s // 2
-            spans[k][1] = t if spans[k][1] is None else spans[k][1]
-            spans[k][0] = t
-        s -= int(back[t, s])
-    return spans, score
+    return heard, len(pcm) / RATE / len(best)
 
 shown = 0
 
 def align_ayah(pcm, words):
-    """[[start s, end s] per word] or None, and the score."""
-    labels = [i for w in words for i in w]
-    lp = logprobs(pcm)
+    """When each word starts and ends (s), and the share of the ayah's letters heard (0-1)."""
     global shown
-    if shown < 4:
+    heard, frame = hear(pcm)
+    want, owner = [], []
+    for k, w in enumerate(words):
+        for ch in letters(w): want.append(ch); owner.append(k)
+    if shown < 3:
         shown += 1
-        print('  heard:   ', heard(lp), '\n  expected:', ''.join(vocab.get(i, '') for i in labels).replace('\u2581', ' ').strip(),
-              '\n  frames', lp.shape, 'seconds', round(len(pcm) / RATE, 2), 'max frame prob', float(np.exp(lp.max(axis=1)).mean().round(3)), flush=True)
-    spans, score = force_align(lp, labels)
-    if spans is None or any(a is None for a, _ in spans): return None, score
-    frame = len(pcm) / RATE / lp.shape[0]
-    out, k = [], 0
-    for w in words:
-        first, last = spans[k], spans[k + len(w) - 1]
-        out.append([first[0] * frame, (last[1] + 1) * frame])
-        k += len(w)
+        print('  heard:   ', ''.join(c for c, _ in heard), '\n  expected:', ''.join(want), flush=True)
+    if not want or not heard: return None, 0.0
+    sm = difflib.SequenceMatcher(None, want, [c for c, _ in heard], autojunk=False)
+    at = [None] * len(want)                   # frame each expected letter was heard at
+    for blk in sm.get_matching_blocks():
+        for j in range(blk.size): at[blk.a + j] = heard[blk.b + j][1]
+    score = sum(1 for x in at if x is not None) / len(want)
+    # A word starts when its first heard letter was heard (its letters before that were missed).
+    starts = [None] * len(words)
+    for k in range(len(words)):
+        idx = [i for i in range(len(want)) if owner[i] == k and at[i] is not None]
+        if idx: starts[k] = at[idx[0]] - (idx[0] - owner.index(k))  # back up a frame per missed letter
+    # Words not heard at all: in between their neighbours.
+    known = [k for k in range(len(words)) if starts[k] is not None]
+    if not known: return None, 0.0
+    for k in range(len(words)):
+        if starts[k] is None:
+            before = max([j for j in known if j < k], default=None)
+            after = min([j for j in known if j > k], default=None)
+            if before is None: starts[k] = starts[after] - (after - k)
+            elif after is None: starts[k] = starts[before] + (k - before)
+            else: starts[k] = starts[before] + (starts[after] - starts[before]) * (k - before) / (after - before)
+    for k in range(1, len(words)):           # never going backwards
+        starts[k] = max(starts[k], starts[k - 1])
+    total = len(pcm) / RATE
+    out = []
+    for k in range(len(words)):
+        b = max(0.0, starts[k] * frame)
+        e = starts[k + 1] * frame if k + 1 < len(words) else min(total, (max(x for x in at if x is not None) + 2) * frame)
+        out.append([b, max(b, e)])
     return out, score
 
 # ---------------------------------------------------------------- audio
@@ -156,7 +148,7 @@ def surah_source(s):
     return None
 
 # Split the Quran into parts of about the same number of words.
-weights = [sum(counts.get(f'{s}:{a}', 0) for a in range(1, verses[s] + 1)) for s in range(1, 115)]
+weights = [sum(len(ayah_words.get(f'{s}:{a}', [])) for a in range(1, verses[s] + 1)) for s in range(1, 115)]
 total, acc, mine = sum(weights), 0, []
 for s, w in zip(range(1, 115), weights):
     if int(acc * parts / total) == part - 1: mine.append(s)
@@ -182,9 +174,8 @@ for s in mine:
     for a in range(1, min(verses[s], LIMIT) + 1):
         key = f'{s}:{a}'
         if key in have: stats['skipped'] += 1; continue
-        words = words_of(tokens.get(key, []))
-        if len(words) != counts.get(key):
-            stats['mismatch'] += 1; continue
+        words = ayah_words.get(key)
+        if not words: stats['mismatch'] += 1; continue
         try:
             if src:
                 if surah_pcm is None: surah_pcm = decode(get(src[1]))
@@ -200,11 +191,8 @@ for s in mine:
                 offset = 0
         except Exception as e:
             print(key, 'audio unavailable:', e, flush=True); stats['nofile'] += 1; continue
-        best = None
-        variants = [words] + ([BASMALAH + words] if a == 1 and s not in (1, 9) else [])
-        for v in variants:
-            got, score = align_ayah(pcm, v)
-            if got and (best is None or score > best[1]): best = (got[len(v) - len(words):], score)
+        got, score = align_ayah(pcm, words)
+        best = (got, score) if got else None
         if not best or best[1] < MIN_SCORE:
             stats['low'] += 1
             print(key, 'not confident', round(best[1], 2) if best else None, flush=True)

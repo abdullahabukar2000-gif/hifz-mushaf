@@ -8,7 +8,8 @@
 #   python3 scripts/merge-words.py
 import glob, json, os
 
-MIN_SCORE = float(os.environ.get('WORDS_MIN_SCORE', '-1.5'))
+# Share of an ayah's letters the listening heard; below this the ayah is estimated.
+MIN_SCORE = float(os.environ.get('WORDS_MIN_SCORE', '0.8'))
 used = kept_out = 0
 for path in sorted(glob.glob('data/words-aligned/*/*.json')):
     reciter, surah = path.split('/')[-2], path.split('/')[-1][:-5]
@@ -24,7 +25,7 @@ for path in sorted(glob.glob('data/words-aligned/*/*.json')):
     merged = dict(qdc) if base == 'qdc' else {}
     for key, words in aligned.items():
         if key in merged: continue
-        if scores.get(key, -99) < MIN_SCORE: kept_out += 1; continue
+        if scores.get(key, 0) < MIN_SCORE: kept_out += 1; continue
         merged[key] = words
         used += 1
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
