@@ -4,7 +4,7 @@ name: Probe word timings
 on:
   push:
     branches: [claude/great-goodall-w4d11z]
-    paths: [scripts/probe-segments.py, .github/workflows/probe-segments.yml]
+    paths: [.github/workflows/probe-segments.yml]
   workflow_dispatch:
 permissions:
   contents: write
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir -p probe && python3 scripts/probe-segments.py
+      - run: mkdir -p probe && python3 scripts/fetch-qdc.py | grep -v '^qdc reciter' | cut -c1-600 > probe/qdc-log.txt; cat probe/qdc-log.txt
       - run: |
           git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
-          git add probe/segments.txt && git commit -m "Probe: word timing sources" && git push
+          git add probe/qdc-log.txt && git commit -m "Probe: word timing fetch log" && git pull -q --rebase && git push
