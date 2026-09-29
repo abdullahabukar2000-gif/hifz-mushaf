@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/copy-ort.js && vite",
-    "build": "node scripts/copy-ort.js && tsc && vite build",
+    "dev": "vite",
+    "build": "tsc && vite build",
     "ingest": "node scripts/ingest.js",
     "preview:build": "tsc && vite build --mode single && node scripts/preview.js"
   },
@@ -21,8 +21,5 @@
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.3"
   },
-  "dependencies": {
-    "@tilawi/quran-asr": "^0.1.0",
-    "onnxruntime-web": "^1.30.0"
-  }
+  "dependencies": {}
 }

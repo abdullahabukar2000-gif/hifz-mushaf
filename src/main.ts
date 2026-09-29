@@ -16,7 +16,7 @@ import { onChange } from './notes';
 import { claudeHost, onSyncState, startSync } from './sync';
 import { mountPlayerBar, openPlayerSheet, playFrom } from './player';
 import { onPlayer, onProgress, stop } from './recite';
-import { clearHeard, clearWordMarks, fillWords, markWords, revealWords } from './verses';
+import { clearHeard, fillWords, revealWords } from './verses';
 import { h } from './dom';
 import { ayahWords } from './data';
 import { registerOffline } from './offline';
@@ -77,7 +77,7 @@ function updateChrome(): void {
   });
   iconButton(layoutButton, layout === 'single' ? 'twoPages' : 'onePage', layout === 'single' ? 'Two pages' : 'One page');
   iconButton(coverButton, coverTranslations ? 'eye' : 'eyeOff', coverTranslations ? 'Show translations' : 'Hide translations');
-  iconButton(hideButton, hideArabic ? 'text' : 'textOff', hideArabic ? 'Show Arabic' : 'Hide Arabic');
+  iconButton(hideButton, hideArabic ? 'text' : 'textOff', hideArabic ? 'Show everything' : 'Reveal as recited');
   hideButton.setAttribute('aria-pressed', String(hideArabic));
   document.body.classList.toggle('hide-arabic', hideArabic);
   updateTitle();
@@ -363,14 +363,18 @@ coverButton.addEventListener('click', () => {
   store.set('cover', coverTranslations ? 'yes' : 'no');
   refresh();
 });
-// Hide the Arabic (to test yourself, like Tarteel): each word is a blank that
-// fills in as you recite it, or as the reciter you're listening to reaches it.
+// Reveal-as-recited mode: the Arabic (every word a blank) and the translation
+// are hidden, and fill in as the reciter you're listening to reaches them.
 hideButton.addEventListener('click', () => {
   hideArabic = !hideArabic;
   store.set('hide-arabic', hideArabic ? 'yes' : 'no');
+  coverTranslations = hideArabic;
+  store.set('cover', coverTranslations ? 'yes' : 'no');
+  resetReveals();
   clearHeard();
   stage.querySelectorAll('.w.heard, .w.peek').forEach((el) => el.classList.remove('heard', 'peek'));
   updateChrome();
+  refresh();
 });
 /** Fill in the first `words` words of an ayah (hidden Arabic). */
 function fillIn(key: string, words: number): void {
@@ -394,7 +398,12 @@ listenButton.addEventListener('click', () => {
 
 // The ayah being recited is marked, in the mushaf and in verse by verse, and kept in view.
 let marked = '';
-onPlayer((n) => highlight(n && !n.basmalah ? `${n.surah}:${n.ayah}` : ''));
+onPlayer((n) => {
+  const key = n && !n.basmalah ? `${n.surah}:${n.ayah}` : '';
+  // An ayah the reciter has finished is shown in full.
+  if (marked && key !== marked && hideArabic) { fillIn(marked, Infinity); if (view === 'verses') revealWords(marked, Infinity); }
+  highlight(key);
+});
 function highlight(key: string): void {
   if (key === marked) return;
   stage.querySelectorAll('.reciting').forEach((el) => el.classList.remove('reciting'));
@@ -430,87 +439,6 @@ onProgress((key, fraction) => {
   if (hideArabic) fillIn(key, reached);
   if (view === 'verses') revealWords(key, reached);
 });
-
-// ------------------------------------------------------------------ recitation mode
-
-// The listening code (and its speech engine) loads only when first used.
-type ListenModule = typeof import('./listen');
-let listenModule: Promise<ListenModule> | null = null;
-const listen = () => (listenModule ??= import('./listen'));
-const reciteButton = document.querySelector<HTMLButtonElement>('#recite')!;
-const listenBar = document.querySelector<HTMLElement>('#listenbar')!;
-iconButton(reciteButton, 'mic', 'Recite');
-
-/** Where to start listening: the ayah at the top of verse by verse, or the page's first ayah. */
-function startKey(): [number, number] {
-  if (view === 'verses') {
-    const top = stage.getBoundingClientRect().top;
-    const ayah = [...stage.querySelectorAll<HTMLElement>('.ayah')].find((el) => el.getBoundingClientRect().bottom > top + 40);
-    if (ayah?.dataset.key) return ayah.dataset.key.split(':').map(Number) as [number, number];
-  }
-  return (ayahRange(pageInView())?.[0] ?? '1:1').split(':').map(Number) as [number, number];
-}
-
-reciteButton.addEventListener('click', async () => {
-  // Start the sound system during the tap itself: iPhone won't allow it later.
-  const ctx = new AudioContext();
-  void ctx.resume().catch(() => undefined);
-  const m = await listen();
-  const drop = () => void ctx.close().catch(() => undefined);
-  if (m.listenState().phase === 'listening') { drop(); m.stopListening(); return; }
-  if (!(await m.modelDownloaded()) && !window.confirm(
-    `Recitation mode listens to you recite and flags wrong or skipped words. It needs a one-time download of about ${m.MODEL_SIZE_MB} MB (best on Wi-Fi). Your voice stays on this device. Download now?`)) { drop(); return; }
-  stop(); // not while a reciter is playing
-  m.startListening(startKey(), ctx);
-});
-
-let wiredListen = false;
-async function wireListen(): Promise<void> {
-  if (wiredListen) return;
-  wiredListen = true;
-  const m = await listen();
-  const text = h('span', { class: 'listen-text' });
-  const end = h('button', { type: 'button', class: 'icon-only listen-stop' }) as HTMLButtonElement;
-  iconButton(end, 'close', 'Stop');
-  end.addEventListener('click', () => { m.stopListening(); listenBar.hidden = true; clearMarks(); });
-  listenBar.replaceChildren(h('span', { class: 'listen-dot', 'aria-hidden': 'true' }), text, end);
-  m.onListen((s) => {
-    document.body.classList.toggle('listening', s.phase === 'listening');
-    listenBar.hidden = s.phase === 'idle';
-    if (s.phase === 'downloading') text.textContent = `Downloading the recitation checker… ${Math.round((s.done / s.total) * 100)}%`;
-    else if (s.phase === 'starting') text.textContent = 'Getting ready…';
-    else if (s.phase === 'listening') {
-      text.textContent = s.heard ? `Listening · ${s.key} · ${s.mistakes} mistake${s.mistakes === 1 ? '' : 's'}` : 'Listening… start reciting';
-      if (s.key) highlight(s.key);
-    } else if (s.phase === 'error') text.textContent = s.message;
-    else highlight('');
-  });
-  m.onMarks((marks, reached) => {
-    for (const [key, per] of marks) {
-      markWords(key, per);
-      // The mushaf page too.
-      stage.querySelectorAll<HTMLElement>(`.w[data-key="${key}"]`).forEach((span) => {
-        const mk = per.get(Number(span.dataset.pos) - 1);
-        span.classList.toggle('mark-ok', mk === 'ok');
-        span.classList.toggle('mark-err', mk === 'err');
-      });
-    }
-    if (reached && hideArabic) {
-      for (const key of marks.keys()) if (key !== reached.key) fillIn(key, Infinity);
-      fillIn(reached.key, reached.words);
-    }
-    if (reached && view === 'verses') {
-      // Reveal every box you've recited, as if tapped.
-      for (const key of marks.keys()) if (key !== reached.key) revealWords(key, Infinity);
-      revealWords(reached.key, reached.words);
-    }
-  });
-}
-reciteButton.addEventListener('click', () => void wireListen(), { capture: true });
-function clearMarks(): void {
-  clearWordMarks();
-  stage.querySelectorAll('.w.mark-ok, .w.mark-err').forEach((el) => el.classList.remove('mark-ok', 'mark-err'));
-}
 
 document.addEventListener('play-ayah', (e) => {
   const [surah, ayah] = (e as CustomEvent<string>).detail.split(':').map(Number);

@@ -22,12 +22,6 @@ const revealed = new Map<string, Set<number>>();
 let shownWith: VerseOptions | null = null;
 
 /** Recitation marks per ayah: word index -> 'ok' | 'err'. */
-const wordMarks = new Map<string, Map<number, 'ok' | 'err'>>();
-export function clearWordMarks(): void {
-  wordMarks.clear();
-  document.querySelectorAll('.vw.mark-ok, .vw.mark-err').forEach((el) => el.classList.remove('mark-ok', 'mark-err'));
-}
-
 function redraw(key: string): void {
   const el = document.getElementById(`ayah-${key.replace(':', '-')}`);
   if (el && shownWith) el.replaceWith(renderAyah(key, shownWith));
@@ -44,18 +38,6 @@ export function revealWords(key: string, wordsReached: number): void {
   let changed = false;
   for (const p of phrases) if (p.start < wordsReached && !set.has(p.start)) { set.add(p.start); changed = true; }
   if (changed) redraw(key);
-}
-
-/** Mark words as recited correctly or not (recitation mode); marks stay across redraws. */
-export function markWords(key: string, marks: Map<number, 'ok' | 'err'>): void {
-  wordMarks.set(key, marks);
-  const el = document.getElementById(`ayah-${key.replace(':', '-')}`);
-  if (!el) return;
-  el.querySelectorAll<HTMLElement>('.vw[data-index]').forEach((span) => {
-    const m = marks.get(Number(span.dataset.index));
-    span.classList.toggle('mark-ok', m === 'ok');
-    span.classList.toggle('mark-err', m === 'err');
-  });
 }
 
 /** Words heard so far per ayah (recited or played): they fill in when the Arabic is hidden. */
@@ -216,8 +198,6 @@ export function renderAyah(key: string, options: VerseOptions): HTMLElement {
       span.dataset.page = String(page);
       span.dataset.code = word.code;
       span.dataset.index = String(w);
-      const mark = wordMarks.get(key)?.get(w);
-      if (mark) span.classList.add(mark === 'ok' ? 'mark-ok' : 'mark-err');
       if (w < (heardUpTo.get(key) ?? 0)) span.classList.add('heard');
       box.append(span);
     }

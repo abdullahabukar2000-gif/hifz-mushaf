@@ -192,7 +192,6 @@ function sources(): HTMLElement {
     ['Translation', 'The Clear Quran by Dr. Mustafa Khattab, as on quran.com, unchanged.'],
     ['Groups', 'Suggested by matching each part of the translation to the Arabic words it means. Yours to change.'],
     ['Recitations', 'Per-ayah recordings from everyayah.com, played unchanged.'],
-    ['Recitation checker', 'Tilawi’s open Quran speech model (fine-tuned from NVIDIA’s Arabic FastConformer, CC-BY-4.0), run on your phone. It only compares what you say with the mushaf text.'],
   ]) list.append(h('li', {}, h('span', { class: 'source-what' }, what), h('span', {}, from)));
   return list;
 }
