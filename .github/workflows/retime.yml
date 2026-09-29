@@ -1,0 +1,32 @@
+# Find where each ayah really is in a reciter's whole-surah recordings (see
+# scripts/retime-surah.py); results committed to data/timings-retimed/.
+name: Retime surahs by listening
+on:
+  workflow_dispatch:
+    inputs:
+      reciter: { required: true, default: tunaiji }
+      part: { required: true, default: '1' }
+      parts: { required: true, default: '1' }
+      only: { required: false, default: '' }
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y ffmpeg >/dev/null 2>&1 && pip install -q onnxruntime numpy
+      - uses: actions/cache@v4
+        with: { path: align-assets, key: tilawi-e9448a0e }
+      - run: |
+          mkdir -p align-assets && cd align-assets
+          M=https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/e9448a0e84f3adb64c28b7a8db501dd8e0e59a84
+          for f in fastconformer_full_mixed.onnx vocab.json quran_ctc_tokens.json; do [ -s $f ] || curl -sfL -o $f $M/$f; done
+      - run: python3 scripts/fetch-qdc.py > /dev/null
+      - run: set -o pipefail; python3 scripts/retime-surah.py ${{ inputs.reciter }} ${{ inputs.part }}/${{ inputs.parts }} ${{ inputs.only && format('--only {0}', inputs.only) || '' }} 2>&1 | grep -v onnxruntime | tee retime.log
+      - run: |
+          mkdir -p probe
+          cp retime.log probe/retime-${{ inputs.reciter }}-${{ inputs.part }}.txt
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add data/timings-retimed probe && git commit -m "Retimed by listening: ${{ inputs.reciter }} part ${{ inputs.part }}" && git pull -q --rebase && git push
