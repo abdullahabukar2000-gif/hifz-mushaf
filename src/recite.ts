@@ -64,7 +64,7 @@ const FILE_FIXES: Record<string, Record<number, (ayah: number) => number | null>
 };
 // (Only for the per-ayah files: quran.com's whole-surah recordings are timed by ayah.)
 const fileAyah = (r: Reciter, surah: number, ayah: number): number | null =>
-  qdcFiles.has(r.id) ? ayah : FILE_FIXES[r.id]?.[surah]?.(ayah) ?? ayah;
+  fromQdc(r, surah) ? ayah : FILE_FIXES[r.id]?.[surah]?.(ayah) ?? ayah;
 /** How many ayahs of a surah this reciter's source actually has. */
 const recordedCount = (r: Reciter, surah: number) => {
   const n = getChapter(surah)?.verses_count ?? 0;
@@ -88,6 +88,9 @@ const recordedCount = (r: Reciter, surah: number) => {
 const timingJobs = new Map<string, Promise<Record<string, number[]>>>();
 /** quran.com recordings found for a reciter: the address of each surah's file. */
 const qdcFiles = new Map<string, string>();
+/** The surahs quran.com's recordings are used for (a surah that failed the build's check isn't there). */
+const qdcSurahs = new Map<string, Set<number>>();
+function fromQdc(r: Reciter, surah: number): boolean { return !!qdcSurahs.get(r.id)?.has(surah); }
 const timingsUrl = (r: Reciter) => (r.gapless ? r.gapless.timings : `data/timings/qdc-${r.id}.json`);
 /** Ayah start times (ms) per surah, with the surah's end time last. */
 function timings(r: Reciter): Promise<Record<string, number[]>> {
@@ -96,7 +99,11 @@ function timings(r: Reciter): Promise<Record<string, number[]>> {
     job = fetch(timingsUrl(r)).then(async (res) => {
       if (!res.ok) throw new Error();
       const t = await res.json();
-      if (typeof t.url === 'string') { qdcFiles.set(r.id, t.url); delete t.url; }
+      if (typeof t.url === 'string') {
+        qdcFiles.set(r.id, t.url);
+        delete t.url;
+        qdcSurahs.set(r.id, new Set(Object.keys(t).map(Number)));
+      }
       return t;
     });
     job.catch(() => { if (!r.qdc) timingJobs.delete(r.id); });
@@ -108,18 +115,18 @@ function timings(r: Reciter): Promise<Record<string, number[]>> {
 const qdcChecks = new Map<string, Promise<boolean>>();
 for (const r of RECITERS.filter((x) => x.qdc)) qdcChecks.set(r.id, timings(r).then(() => true, () => false));
 /** Plays one file per surah (with ayah times), rather than one per ayah. */
-const wholeSurah = (r: Reciter) => !!r.gapless || qdcFiles.has(r.id);
+const wholeSurah = (r: Reciter, surah: number) => !!r.gapless || fromQdc(r, surah);
 async function settled(r: Reciter): Promise<void> { await qdcChecks.get(r.id); }
 
 const wordJobs = new Map<string, Promise<Record<string, [number, number, number][]>>>();
 /** When each word starts and ends (ms, in the surah file), if known. */
 function wordTimes(r: Reciter, surah: number): Promise<Record<string, [number, number, number][]>> | null {
-  if (!qdcFiles.has(r.id)) return null;
+  if (!fromQdc(r, surah)) return null;
   const k = `${r.id}/${surah}`;
   let job = wordJobs.get(k);
   if (!job) {
-    job = fetch(`data/words/${r.id}/${surah}.json`).then((res) => { if (!res.ok) throw new Error(); return res.json(); });
-    job.catch(() => wordJobs.delete(k));
+    // None published for this surah: estimate (and don't ask again).
+    job = fetch(`data/words/${r.id}/${surah}.json`).then((res) => (res.ok ? res.json() : {}), () => ({}));
     wordJobs.set(k, job);
   }
   return job;
@@ -153,8 +160,10 @@ const surahUrl = (r: Reciter, surah: number) => {
 };
 
 /** Web addresses to try for one ayah, the one that worked last time first. */
-function addresses(r: Reciter, surah: number, ayah: number): string[] {
-  if (wholeSurah(r)) return [surahUrl(r, surah)];
+/** (`perAyah`: the per-ayah file even where the surah has a whole-surah one — for
+ * the basmalah before a surah that's played ayah by ayah.) */
+function addresses(r: Reciter, surah: number, ayah: number, perAyah = false): string[] {
+  if (!perAyah && wholeSurah(r, surah)) return [surahUrl(r, surah)];
   const real = fileAyah(r, surah, ayah);
   if (real === null) return [];
   ayah = real;
@@ -166,13 +175,13 @@ function addresses(r: Reciter, surah: number, ayah: number): string[] {
 const rememberBase = (r: Reciter, url: string) => store.set(`recite-base-${r.id}`, url.slice(0, url.lastIndexOf('/') + 1));
 
 /** The key a saved recording is kept under, whichever address it came from. */
-const savedKey = (r: Reciter, surah: number, ayah: number) =>
-  new Request(`${location.origin}/__recitation/${r.id}${qdcFiles.has(r.id) ? '-qdc' : ''}/${wholeSurah(r) ? surahFile(surah) : file(surah, ayah)}`);
+const savedKey = (r: Reciter, surah: number, ayah: number, perAyah = false) =>
+  new Request(`${location.origin}/__recitation/${r.id}${!perAyah && fromQdc(r, surah) ? '-qdc' : ''}/${!perAyah && wholeSurah(r, surah) ? surahFile(surah) : file(surah, ayah)}`);
 
-async function savedBlob(r: Reciter, surah: number, ayah: number): Promise<Blob | null> {
+async function savedBlob(r: Reciter, surah: number, ayah: number, perAyah = false): Promise<Blob | null> {
   if (!('caches' in window)) return null;
   try {
-    const res = await (await caches.open(SAVED)).match(savedKey(r, surah, ayah));
+    const res = await (await caches.open(SAVED)).match(savedKey(r, surah, ayah, perAyah));
     return res ? await res.blob() : null;
   } catch { return null; }
 }
@@ -224,19 +233,20 @@ export async function downloadSurah(reciterId: string, surah: number, progress: 
   const needsBasmalah = surah !== 1 && surah !== 9;
   let list: [number, number][] = [...(needsBasmalah ? [[1, 1] as [number, number]] : []),
     ...Array.from({ length: total }, (_, i) => [surah, i + 1] as [number, number])];
-  if (wholeSurah(r)) {
+  if (wholeSurah(r, surah)) {
     // One file for the surah (and Al-Fatihah's, if the basmalah comes from there).
     const b = needsBasmalah ? await segment(r, surah, 1, true).catch(() => null) : null;
     list = [[surah, 1], ...(b && b.file === 1 ? [[1, 1] as [number, number]] : [])];
     job.total = 1;
   }
+  const perAyah = !wholeSurah(r, surah);
   let failed = '';
   for (let i = 0; i < list.length && !job.stop; i += 4) {
     await Promise.all(list.slice(i, i + 4).map(async ([s, a]) => {
-      const key = savedKey(r, s, a);
+      const key = savedKey(r, s, a, perAyah);
       if (fileAyah(r, s, a) !== null && !(await cache.match(key))) {
         let saved = false;
-        for (const url of addresses(r, s, a)) {
+        for (const url of addresses(r, s, a, perAyah)) {
           try {
             const res = await fetch(url, { mode: 'cors' });
             if (!res.ok) continue;
@@ -325,7 +335,7 @@ function emitProgress(): void {
   const key = `${now.surah}:${now.ayah}`;
   let words: number | undefined;
   const r = reciterById(now.plan.reciter);
-  if (audio.dataset.file && qdcFiles.has(r.id)) {
+  if (audio.dataset.file && fromQdc(r, now.surah)) {
     const k = `${r.id}/${now.surah}`;
     const known = loadedWords.get(k);
     if (known) {
@@ -426,14 +436,14 @@ async function start(): Promise<void> {
   }
 
   between = false;
-  if (wholeSurah(r)) { await startSegment(r, s, a, mine); return; }
+  if (wholeSurah(r, now.surah)) { await startSegment(r, s, a, mine); return; }
 
-  const blob = await savedBlob(r, s, a);
+  const blob = await savedBlob(r, s, a, true);
   if (mine !== token) return;
   if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
   segmentEnd = null;
   audio.dataset.file = '';
-  const sources = blob ? [(blobUrl = URL.createObjectURL(blob))] : addresses(r, s, a);
+  const sources = blob ? [(blobUrl = URL.createObjectURL(blob))] : addresses(r, s, a, true);
   for (const src of sources) {
     audio.src = src;
     audio.playbackRate = now.plan.speed;

@@ -121,10 +121,13 @@ def one(app, name, style, avoid):
                     den = (sum((x - ma) ** 2 for x in d) * sum((y - mb) ** 2 for y in e)) ** .5
                     cs.append(num / den if den else 1)
                 # Off only if it disagrees with every other reciter.
-                if cs and max(cs) < 0.8: off.append(f'{s_} ({max(cs):.2f})')
-            print(app, ': ayah lengths match the other reciters in every surah' if not off else f': surahs whose ayah lengths look off: {off}')
-            if app in AYAHS_ONLY and len(off) > 3:
-                print(app, ': too many surahs look off — left out'); return
+                if cs and max(cs) < 0.8: off.append(s_); print(app, f': surah {s_} ayah lengths look off ({max(cs):.2f})')
+            if not off: print(app, ': ayah lengths match the other reciters in every surah')
+            if app in AYAHS_ONLY:
+                if len(off) > 10: print(app, ': too many surahs look off — left out'); return
+                # Those surahs keep playing from the per-ayah files.
+                for s_ in off: timing.pop(s_, None); per_surah.pop(int(s_), None)
+                if off: print(app, ': left on the per-ayah files for surahs', off)
         os.makedirs('public/data/timings', exist_ok=True)
         json.dump({'url': url_tmpl, **timing}, open(f'public/data/timings/qdc-{app}.json', 'w'), separators=(',', ':'))
         os.makedirs(f'public/data/words/{app}', exist_ok=True)
