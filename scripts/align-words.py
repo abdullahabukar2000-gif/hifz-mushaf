@@ -191,7 +191,12 @@ for s in mine:
                 offset = 0
         except Exception as e:
             print(key, 'audio unavailable:', e, flush=True); stats['nofile'] += 1; continue
-        got, score = align_ayah(pcm, words)
+        if len(pcm) < RATE // 2:  # no (or almost no) audio for this ayah in the file
+            print(key, 'no audio in the file at its time', flush=True); stats['nofile'] += 1; continue
+        try:
+            got, score = align_ayah(pcm, words)
+        except Exception as e:
+            print(key, 'could not be heard:', e, flush=True); stats['nofile'] += 1; continue
         best = (got, score) if got else None
         if not best or best[1] < MIN_SCORE:
             stats['low'] += 1

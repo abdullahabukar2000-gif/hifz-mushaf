@@ -1,0 +1,31 @@
+# Word timings for one part of one reciter (to redo a part of
+# align-words.yml); the result is committed straight to data/words-aligned/.
+name: Align words (one part)
+on:
+  workflow_dispatch:
+    inputs:
+      reciter: { required: true }
+      part: { required: true }
+      parts: { required: true, default: '6' }
+permissions:
+  contents: write
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y ffmpeg >/dev/null 2>&1 && pip install -q onnxruntime numpy
+      - uses: actions/cache@v4
+        with: { path: align-assets, key: tilawi-e9448a0e }
+      - run: |
+          mkdir -p align-assets && cd align-assets
+          M=https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/e9448a0e84f3adb64c28b7a8db501dd8e0e59a84
+          for f in fastconformer_full_mixed.onnx vocab.json quran_ctc_tokens.json; do [ -s $f ] || curl -sfL -o $f $M/$f; done
+      - run: python3 scripts/fetch-timings.py abdurrashid_sufi > /dev/null && python3 scripts/fetch-qdc.py > /dev/null
+      - run: set -o pipefail; python3 scripts/align-words.py ${{ inputs.reciter }} ${{ inputs.part }}/${{ inputs.parts }} 2>&1 | tee align.log
+      - run: |
+          mkdir -p probe
+          grep -E "FINAL|scores|not confident|no audio|could not|unavailable" align.log > probe/align-${{ inputs.reciter }}-${{ inputs.part }}.txt || true
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add data/words-aligned probe && git commit -m "Word timings by listening: ${{ inputs.reciter }} part ${{ inputs.part }}" && git pull -q --rebase && git push
