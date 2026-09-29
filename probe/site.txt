@@ -1,11 +1,11 @@
-publish run: success 6ad5a7e3def0fda588339a39e0ddbe7eabc6069a
+publish run: success 739a2a321a208b56386daf593a724be0122982c3
 200 1869 
 404 9379 data/timings/qdc-alafasy.json
-200 46818 data/timings/qdc-husary.json
-200 45648 data/timings/qdc-minshawi.json
+404 9379 data/timings/qdc-husary.json
+404 9379 data/timings/qdc-minshawi.json
 404 9379 data/words/alafasy/14.json
-200 14384 data/words/husary/14.json
-200 13801 data/words/minshawi/14.json
+404 9379 data/words/husary/14.json
+404 9379 data/words/minshawi/14.json
 200 45155 data/timings/abdurrashid_sufi.json
 {"1":[0,7969,12196,15453,18745,23509,27528,41544],"2":[0,11957,18123,29459,44494,54943,68148,81974,94071,106029,119761,130200,139052,162686,180739,188516,200777,219367,226514,250966,279178,292700,321543,348821,363043,400037,441654,472085,487265,507537,537757,564031,577203,608217,623841,646448,666697
 <!DOCTYPE html>
