@@ -1,90 +1,95 @@
 == got/align-alafasy-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.93), np.float64(0.98), np.float64(1.0)]
+FINAL alafasy 1 {'aligned': 495, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 1755}
 == got/align-alafasy-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
+37:130 not confident 0.23
+scores 5/50/95%: [np.float64(0.911), np.float64(0.978), np.float64(1.0)]
+FINAL alafasy 2 {'aligned': 349, 'low': 1, 'mismatch': 0, 'nofile': 0, 'skipped': 3636}
 == got/align-ayyub-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.945), np.float64(0.993), np.float64(1.0)]
+FINAL ayyub 1 {'aligned': 669, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-ayyub-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.944), np.float64(0.991), np.float64(1.0)]
+FINAL ayyub 2 {'aligned': 695, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-ayyub-3.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.936), np.float64(1.0), np.float64(1.0)]
+FINAL ayyub 3 {'aligned': 886, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-ayyub-4.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.939), np.float64(1.0), np.float64(1.0)]
+FINAL ayyub 4 {'aligned': 1159, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-ayyub-5.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.925), np.float64(1.0), np.float64(1.0)]
+FINAL ayyub 5 {'aligned': 1101, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-ayyub-6.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.929), np.float64(1.0), np.float64(1.0)]
+FINAL ayyub 6 {'aligned': 1726, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-husary-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.948), np.float64(0.989), np.float64(1.0)]
+FINAL husary 1 {'aligned': 198, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 2052}
 == got/align-husary-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.963), np.float64(0.99), np.float64(1.0)]
+FINAL husary 2 {'aligned': 124, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 3862}
 == got/align-minshawi-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+4:168 not confident 0.22
+scores 5/50/95%: [np.float64(0.945), np.float64(0.987), np.float64(1.0)]
+FINAL minshawi 1 {'aligned': 285, 'low': 1, 'mismatch': 0, 'nofile': 0, 'skipped': 1964}
 == got/align-minshawi-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.959), np.float64(0.988), np.float64(1.0)]
+FINAL minshawi 2 {'aligned': 168, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 3818}
 == got/align-muaiqly-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.962), np.float64(1.0), np.float64(1.0)]
+FINAL muaiqly 1 {'aligned': 669, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-muaiqly-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.964), np.float64(1.0), np.float64(1.0)]
+FINAL muaiqly 2 {'aligned': 695, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-muaiqly-3.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.967), np.float64(1.0), np.float64(1.0)]
+FINAL muaiqly 3 {'aligned': 886, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-muaiqly-4.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.96), np.float64(1.0), np.float64(1.0)]
+FINAL muaiqly 4 {'aligned': 1159, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-muaiqly-5.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.967), np.float64(1.0), np.float64(1.0)]
+FINAL muaiqly 5 {'aligned': 1101, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-muaiqly-6.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.95), np.float64(1.0), np.float64(1.0)]
+FINAL muaiqly 6 {'aligned': 1726, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-sufi-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.94), np.float64(0.989), np.float64(1.0)]
+FINAL sufi 1 {'aligned': 669, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-sufi-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
+7:52 not confident 0.38
+scores 5/50/95%: [np.float64(0.942), np.float64(0.989), np.float64(1.0)]
+FINAL sufi 2 {'aligned': 694, 'low': 1, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-sufi-3.log
-Traceback (most recent call last):
-KeyError: '1:1'
+16:1 not confident 0.38
+scores 5/50/95%: [np.float64(0.938), np.float64(1.0), np.float64(1.0)]
+FINAL sufi 3 {'aligned': 885, 'low': 1, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-sufi-4.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.924), np.float64(1.0), np.float64(1.0)]
+FINAL sufi 4 {'aligned': 1159, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-sufi-5.log
-Traceback (most recent call last):
-KeyError: '1:1'
+36:2 not confident 0.36
+43:68 not confident 0.33
+scores 5/50/95%: [np.float64(0.929), np.float64(1.0), np.float64(1.0)]
+FINAL sufi 5 {'aligned': 1099, 'low': 2, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-sufi-6.log
-Traceback (most recent call last):
-KeyError: '1:1'
+76:1 not confident 0.37
+scores 5/50/95%: [np.float64(0.909), np.float64(1.0), np.float64(1.0)]
+FINAL sufi 6 {'aligned': 1725, 'low': 1, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-tunaiji-1.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.968), np.float64(1.0), np.float64(1.0)]
+FINAL tunaiji 1 {'aligned': 669, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-tunaiji-2.log
-Traceback (most recent call last):
-KeyError: '1:1'
-== got/align-tunaiji-3.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.968), np.float64(1.0), np.float64(1.0)]
+FINAL tunaiji 2 {'aligned': 695, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-tunaiji-4.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.958), np.float64(1.0), np.float64(1.0)]
+FINAL tunaiji 4 {'aligned': 1159, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-tunaiji-5.log
-Traceback (most recent call last):
-KeyError: '1:1'
+34:50 not confident 0.19
+scores 5/50/95%: [np.float64(0.962), np.float64(1.0), np.float64(1.0)]
+FINAL tunaiji 5 {'aligned': 1100, 'low': 1, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
 == got/align-tunaiji-6.log
-Traceback (most recent call last):
-KeyError: '1:1'
+scores 5/50/95%: [np.float64(0.938), np.float64(1.0), np.float64(1.0)]
+FINAL tunaiji 6 {'aligned': 1726, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
