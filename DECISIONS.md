@@ -275,3 +275,18 @@
   average 3.2 words (was 4.3), biggest 24 (was 35); whole Quran: biggest 63 (was 120).
   Pieces are still exact slices of the translation; the hand-checked groups are kept.
 - A box too long for the screen wraps inside itself; verse by verse can't scroll sideways.
+
+# Reveal choices; word timings by listening
+
+- The reveal button opens a menu: show everything; reveal the translation (the Arabic
+  stays); reveal Arabic and translation.
+- Word timings for reciters without quran.com's (Abdirashid Sufi, Maher Al-Muaiqly,
+  Muhammad Ayyub, Khalifa Al-Tunaiji, and the ayahs missing from quran.com's for the
+  others) come from listening to the recordings: .github/workflows/align-words.yml runs
+  scripts/align-words.py over every ayah on GitHub Actions. Tilawi's speech model hears
+  the ayah; the letters it hears (harakat and marks set aside) are lined up with the
+  mushaf's own words, and each word starts when its first letter is heard. Each ayah is
+  scored by the share of its letters heard; scripts/merge-words.py uses those at 0.8 or
+  above at build time, and the app estimates only for the rest. Results are committed in
+  data/words-aligned/. First try (CTC forced alignment to the model's token table) failed:
+  the model often writes harakat, the table has none.
