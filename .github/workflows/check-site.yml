@@ -1,0 +1,38 @@
+# After each publish: check the live site has what it should, and that the
+# recordings it uses can be played and saved from the site. The report is
+# committed to probe/site.txt.
+name: Check live site
+on:
+  workflow_run:
+    workflows: [Publish website]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: claude/great-goodall-w4d11z }
+      - run: |
+          mkdir -p probe
+          S=https://abdullahabukar2000-gif.github.io/hifz-mushaf
+          {
+            echo "publish run: ${{ github.event.workflow_run.conclusion }} ${{ github.event.workflow_run.head_sha }}"
+            sleep 60
+            for p in "" data/timings/qdc-alafasy.json data/timings/qdc-husary.json data/timings/qdc-minshawi.json data/words/alafasy/14.json data/words/husary/14.json data/words/minshawi/14.json data/timings/abdurrashid_sufi.json; do
+              echo "$(curl -s -o /tmp/f -w '%{http_code} %{size_download}' "$S/$p") $p"
+            done
+            head -c 300 /tmp/f; echo
+            python3 -c "import json;d=json.load(open('/tmp/f')) if False else None" || true
+            curl -s "$S/data/timings/qdc-alafasy.json" | head -c 200; echo
+            curl -s "$S/data/words/alafasy/14.json" | head -c 300; echo
+            for u in https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/14.mp3 https://download.quranicaudio.com/qdc/khalil_al_husary/murattal/14.mp3 https://download.quranicaudio.com/qdc/siddiq_minshawi/murattal/14.mp3; do
+              echo "== $u"
+              curl -s -D - -o /dev/null -H "Origin: https://abdullahabukar2000-gif.github.io" -H "Range: bytes=1000-1999" "$u" | grep -iE "^HTTP|content-range|access-control-allow-origin|content-type|accept-ranges"
+            done
+          } > probe/site.txt 2>&1
+          cat probe/site.txt
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add probe/site.txt && git commit -m "Check: live site" && git pull -q --rebase && git push
