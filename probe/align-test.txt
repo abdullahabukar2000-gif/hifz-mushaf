@@ -1,0 +1,100 @@
+######## muaiqly
+muaiqly part 1 of 1 surahs 1 - 112
+  heard:    بسم الله الرحمن الرحيم 
+  expected: بسم الله الرحمن الرحيم 
+  frames (44, 1025) seconds 3.5 max frame prob 0.9860000014305115
+  heard:    الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ 
+  expected: الحمد لله رب العلمين 
+  frames (43, 1025) seconds 3.37 max frame prob 0.9729999899864197
+1:2 not confident -5.88
+  heard:    الرَّحْمَنِ الرَّحِيمِ 
+  expected: الرحمن الرحيم 
+  frames (33, 1025) seconds 2.64 max frame prob 0.9819999933242798
+1:3 not confident -5.16
+  heard:    مَالِكِ يَوْمِ الدِّينِ 
+  expected: ملك يوم الدين 
+  frames (38, 1025) seconds 2.98 max frame prob 0.972000002861023
+1:4 not confident -5.32
+1:5 not confident -5.36
+1:6 not confident -7.48
+surah 1: done {'aligned': 1, 'low': 5, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
+20:2 not confident -5.11
+20:3 not confident -6.97
+20:4 not confident -6.92
+20:5 not confident -6.38
+20:6 not confident -5.76
+surah 20: done {'aligned': 1, 'low': 10, 'mismatch': 1, 'nofile': 0, 'skipped': 0}
+112:3 not confident -5.16
+112:4 not confident -7.56
+surah 112: done {'aligned': 2, 'low': 12, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+scores 5/50/95%: [np.float64(-3.716), np.float64(-1.963), np.float64(-0.21)]
+FINAL muaiqly 1 {'aligned': 2, 'low': 12, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+20:1 None {}
+######## ayyub
+ayyub part 1 of 1 surahs 1 - 112
+  heard:    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ 
+  expected: بسم الله الرحمن الرحيم 
+  frames (83, 1025) seconds 6.64 max frame prob 0.9639999866485596
+  heard:    الحمد لله رب العالمين 
+  expected: الحمد لله رب العلمين 
+  frames (87, 1025) seconds 6.9 max frame prob 0.9900000095367432
+  heard:    الرَّحْمَنِ الرَّحِيمِ 
+  expected: الرحمن الرحيم 
+  frames (60, 1025) seconds 4.73 max frame prob 0.9769999980926514
+  heard:    مَالِكِ يَوْمِ الدِّينِ 
+  expected: ملك يوم الدين 
+  frames (61, 1025) seconds 4.83 max frame prob 0.9729999899864197
+surah 1: done {'aligned': 6, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
+20:3 not confident -5.47
+20:5 not confident -4.72
+surah 20: done {'aligned': 9, 'low': 2, 'mismatch': 1, 'nofile': 0, 'skipped': 0}
+112:4 not confident -5.24
+surah 112: done {'aligned': 11, 'low': 3, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+scores 5/50/95%: [np.float64(-3.604), np.float64(-2.708), np.float64(-0.417)]
+FINAL ayyub 1 {'aligned': 11, 'low': 3, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+20:1 None {'20:2': -0.623, '20:4': -0.905, '20:6': -2.64}
+######## sufi
+sufi part 1 of 1 surahs 1 - 112
+  heard:    أعوذ بالله من الشيطان الرجيم بسم الله الرحمن الرحيم 
+  expected: بسم الله الرحمن الرحيم 
+  frames (104, 1025) seconds 8.32 max frame prob 0.9890000224113464
+  heard:    ال الحمد لله رب العالمين نهاية ال الدرس 
+  expected: الحمد لله رب العلمين 
+  frames (62, 1025) seconds 4.93 max frame prob 0.9399999976158142
+  heard:    الرحمن الرحيم 
+  expected: الرحمن الرحيم 
+  frames (50, 1025) seconds 3.96 max frame prob 0.9350000023841858
+  heard:    ماَالِلكِ يَوم الينِ 
+  expected: ملك يوم الدين 
+  frames (50, 1025) seconds 3.99 max frame prob 0.9089999794960022
+surah 1: done {'aligned': 6, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
+surah 20: done {'aligned': 11, 'low': 0, 'mismatch': 1, 'nofile': 0, 'skipped': 0}
+surah 112: done {'aligned': 14, 'low': 0, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+scores 5/50/95%: [np.float64(-1.964), np.float64(-0.416), np.float64(-0.067)]
+FINAL sufi 1 {'aligned': 14, 'low': 0, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+20:1 None {'20:2': -0.57, '20:3': -0.517, '20:4': -0.579, '20:5': -0.323, '20:6': -3.492}
+######## tunaiji
+tunaiji part 1 of 1 surahs 1 - 112
+  heard:    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ 
+  expected: بسم الله الرحمن الرحيم 
+  frames (75, 1025) seconds 5.97 max frame prob 0.9710000157356262
+  heard:    الْحَمْدُ لِلَّهِ رَبِّ الْعَِينَ 
+  expected: الحمد لله رب العلمين 
+  frames (85, 1025) seconds 6.73 max frame prob 0.968999981880188
+  heard:    بسم الله الرحمن الرحيموس الجزء 
+  expected: الرحمن الرحيم 
+  frames (70, 1025) seconds 5.56 max frame prob 0.8230000138282776
+  heard:    ماَالِلك يوم الدّين إيّا 
+  expected: ملك يوم الدين 
+  frames (71, 1025) seconds 5.61 max frame prob 0.9100000262260437
+surah 1: done {'aligned': 6, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
+20:3 not confident -5.0
+20:4 not confident -4.57
+20:5 not confident -4.32
+20:6 not confident -5.3
+surah 20: done {'aligned': 7, 'low': 4, 'mismatch': 1, 'nofile': 0, 'skipped': 0}
+112:4 not confident -5.37
+surah 112: done {'aligned': 9, 'low': 5, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+scores 5/50/95%: [np.float64(-3.911), np.float64(-0.599), np.float64(-0.131)]
+FINAL tunaiji 1 {'aligned': 9, 'low': 5, 'mismatch': 2, 'nofile': 0, 'skipped': 0}
+20:1 None {'20:2': -3.926}
