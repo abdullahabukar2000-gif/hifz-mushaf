@@ -1,0 +1,90 @@
+== got/align-alafasy-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-alafasy-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-ayyub-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-ayyub-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-ayyub-3.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-ayyub-4.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-ayyub-5.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-ayyub-6.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-husary-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-husary-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-minshawi-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-minshawi-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-muaiqly-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-muaiqly-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-muaiqly-3.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-muaiqly-4.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-muaiqly-5.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-muaiqly-6.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-sufi-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-sufi-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-sufi-3.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-sufi-4.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-sufi-5.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-sufi-6.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-tunaiji-1.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-tunaiji-2.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-tunaiji-3.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-tunaiji-4.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-tunaiji-5.log
+Traceback (most recent call last):
+KeyError: '1:1'
+== got/align-tunaiji-6.log
+Traceback (most recent call last):
+KeyError: '1:1'
