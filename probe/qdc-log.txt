@@ -1,0 +1,15 @@
+alafasy -> 7 Mishari Rashid al-`Afasy Murattal
+alafasy 1 https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/1.mp3 {"verse_key": "1:1", "timestamp_from": 0, "timestamp_to": 6090, "duration": 6090, "segments": [[1, 0, 580], [2, 580, 1409], [3, 1409, 2502], [4, 2502, 5840]]}
+alafasy 14 https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/14.mp3 {"verse_key": "14:1", "timestamp_from": 0, "timestamp_to": 21191, "duration": 21680, "segments": [[1, 0, 5791], [2, 5791, 6840], [3, 6840, 8856], [4, 8856, 9568], [5, 9568, 11354], [6, 11354, 11971], [7, 11971, 12291], [8, 12291, 13428], [9, 13428, 13953], [10, 13953, 15013], [11, 15013, 15846], [12, 15846, 16705], [13, 16705, 17397], [14, 17397, 18299], [15, 18299, 19300], [16, 19300, 21635], [16
+alafasy : word timings match the mushaf for 5388 of 6236 ayahs
+alafasy : too many ayahs whose word timings don't match — left out
+husary -> 6 Mahmoud Khalil Al-Husary Murattal
+husary 1 https://download.quranicaudio.com/qdc/khalil_al_husary/murattal/1.mp3 {"verse_key": "1:1", "timestamp_from": 0, "timestamp_to": 5220, "duration": -5220, "segments": [[1, 0, 540], [2, 540, 1350], [3, 1350, 2356], [4, 2356, 4810]]}
+husary 14 https://download.quranicaudio.com/qdc/khalil_al_husary/murattal/14.mp3 {"verse_key": "14:1", "timestamp_from": 0, "timestamp_to": 30380, "duration": -30380, "segments": [[1, 0, 5210], [2, 5230, 8380], [3, 8380, 10730], [4, 10730, 11770], [5, 11770, 13110], [6, 13110, 14660], [7, 14660, 15170], [8, 15170, 17030], [9, 17030, 17660], [10, 17660, 19210], [11, 19210, 20290], [12, 20290, 21700], [13, 21700, 22580], [14, 22580, 23810], [15, 23810, 25400], [16, 25400, 29060]
+husary : word timings match the mushaf for 5911 of 6236 ayahs
+husary : written
+minshawi -> 9 Mohamed Siddiq al-Minshawi Murattal
+minshawi 1 https://download.quranicaudio.com/qdc/siddiq_minshawi/murattal/1.mp3 {"verse_key": "1:1", "timestamp_from": 0, "timestamp_to": 5040, "duration": 4980, "segments": [[1, 20.0, 830.0], [2, 830.0, 1490.0], [3, 1490.0, 2610.0], [4, 2610.0, 3945.0]]}
+minshawi 14 https://download.quranicaudio.com/qdc/siddiq_minshawi/murattal/14.mp3 {"verse_key": "14:1", "timestamp_from": 0, "timestamp_to": 21370, "duration": 21320, "segments": [[1, 0.0, 4130.0], [2, 4150.0, 6230.0], [3, 6230.0, 8300.0], [4, 8300.0, 9100.0], [5, 9100.0, 10170.0], [6, 10170.0, 11510.0], [7, 11510.0, 11920.0], [8, 11920.0, 13260.0], [9, 13260.0, 13650.0], [10, 13650.0, 14920.0], [11, 14920.0, 15820.0], [12, 15820.0, 16890.0], [13, 16890.0, 17470.0], [14, 17470.
+minshawi : word timings match the mushaf for 5779 of 6236 ayahs
+minshawi : written
