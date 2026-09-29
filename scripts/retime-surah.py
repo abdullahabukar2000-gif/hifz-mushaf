@@ -90,22 +90,34 @@ def hear_all(pcm):
         start += step
     return heard
 
-def place(want, owner, nwords, heard, cursor):
-    """Line an ayah's letters up with the heard letters from `cursor`: word starts (s), score, new cursor."""
-    window = heard[cursor:cursor + 2 * len(want) + 400]
+def match(want, window):
+    """Each wanted letter's index in `window` (or None), using only runs of 3+
+    letters in a row (a stray single letter can match anywhere), and the score."""
     sm = difflib.SequenceMatcher(None, want, [c for c, _ in window], autojunk=False)
-    at, last = [None] * len(want), None
+    at = [None] * len(want)
     for blk in sm.get_matching_blocks():
-        for j in range(blk.size):
-            at[blk.a + j] = window[blk.b + j][1]
-            last = cursor + blk.b + j
-    score = sum(1 for x in at if x is not None) / len(want)
+        if blk.size >= 3 or (blk.size and len(want) <= 6):
+            for j in range(blk.size): at[blk.a + j] = blk.b + j
+    return at, sum(1 for x in at if x is not None) / len(want)
+
+def place(want, owner, nwords, heard, cursor):
+    """Line an ayah's letters up with the heard letters from `cursor`: word starts
+    (s), score, new cursor. Moves on only if the ayah was heard well; if not near
+    the cursor, looks further ahead."""
+    best = None
+    for span in (2 * len(want) + 400, 8 * len(want) + 4000):
+        window = heard[cursor:cursor + span]
+        at, score = match(want, window)
+        if best is None or score > best[1]: best = (window, at, score)
+        if score >= 0.6: break
+    window, at, score = best
+    times = [None if x is None else window[x][1] for x in at]
     starts = [None] * nwords
     for k in range(nwords):
-        idx = [i for i in range(len(want)) if owner[i] == k and at[i] is not None]
-        if idx: starts[k] = at[idx[0]]
+        idx = [i for i in range(len(want)) if owner[i] == k and times[i] is not None]
+        if idx: starts[k] = times[idx[0]]
     known = [k for k in range(nwords) if starts[k] is not None]
-    if not known: return None, 0.0, cursor
+    if not known or score < 0.5: return (None if not known else None), score, cursor
     for k in range(nwords):
         if starts[k] is None:
             before = max([j for j in known if j < k], default=None)
@@ -114,7 +126,8 @@ def place(want, owner, nwords, heard, cursor):
             elif after is None: starts[k] = starts[before]
             else: starts[k] = starts[before] + (starts[after] - starts[before]) * (k - before) / (after - before)
     for k in range(1, nwords): starts[k] = max(starts[k], starts[k - 1])
-    return starts, score, (last + 1 if last is not None else cursor)
+    last = max(x for x in at if x is not None)
+    return starts, score, cursor + last + 1
 
 src = json.load(open(f'public/data/timings/qdc-{reciter}.json'))
 url_of = lambda s: src['url'].replace('{sss}', f'{s:03d}').replace('{s}', str(s))
@@ -132,6 +145,10 @@ for s in mine:
     except Exception as e: print(s, 'recording unavailable:', e, flush=True); continue
     heard = hear_all(pcm)
     duration = len(pcm) / RATE
+    # What was heard, kept so the lining-up can be checked and tuned without listening again.
+    os.makedirs(f'probe/heard/{reciter}', exist_ok=True)
+    json.dump({'letters': ''.join(c for c, _ in heard), 'times': [round(t, 2) for _, t in heard], 'duration': duration},
+              open(f'probe/heard/{reciter}/{s}.json', 'w'), separators=(',', ':'))
     cursor, times, scores, words_out, word_ends = 0, [], [], {}, []
     for a in range(1, verses[s] + 1):
         key = f'{s}:{a}'
