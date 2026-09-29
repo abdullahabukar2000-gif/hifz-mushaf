@@ -149,7 +149,8 @@ body {
   font-family: var(--arabic);
   font-size: 0.82em;
   line-height: 1;
-  padding-bottom: 0.1em;
+  /* The name's letters sit low in the font: lift it to the frame's middle. */
+  transform: translateY(-0.28em);
 }
 
 .line.basmalah { justify-content: center; }
@@ -358,6 +359,7 @@ body:is([data-view='mushaf'], [data-view='verses']) #topbar :is(#hide, #listen) 
   row-gap: 0.55rem;
   font-family: var(--arabic);
   font-size: clamp(1.2rem, 5.2vw, 1.95rem);
+  justify-content: center;
   line-height: 1.9;
   color: var(--ink);
 }
@@ -407,8 +409,8 @@ body:is([data-view='mushaf'], [data-view='verses']) #topbar :is(#hide, #listen) 
 body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none; }
 
 /* One English line, filled in box by box. */
-.ayah-english { display: grid; gap: 0.4rem; justify-items: start; }
-.english-line { margin: 0; max-width: 62ch; font-size: 1.12rem; line-height: 1.75; }
+.ayah-english { display: grid; gap: 0.4rem; justify-items: center; }
+.english-line { margin: 0; max-width: 62ch; font-size: 1.12rem; line-height: 1.75; text-align: center; }
 .english-part {
   color: var(--ink);
   padding: 0.05em 0.1em;
@@ -428,13 +430,14 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 .english-part.open:hover { background: var(--accent-wash); }
 
 .ayah-translation {
-  margin: 0;
+  margin: 0 auto;
+  text-align: center;
   max-width: 62ch;
   font-size: 1.06rem;
   line-height: 1.6;
 }
 .ayah-translation.tappable { cursor: pointer; }
-.ayah-cover { justify-self: start; }
+.ayah-cover { justify-self: center; }
 
  /* Phones: tighter, so a whole ayah and its meaning fit on screen. */
 @media (max-width: 520px) {
@@ -734,3 +737,9 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 .hide-arabic :is(.w, .vw).heard, .hide-arabic .w.peek { animation: fill-in 0.25s ease-out; }
 @keyframes fill-in { from { opacity: 0.2; } to { opacity: 1; } }
 #topbar #hide[aria-pressed='true'] { color: var(--accent-ink); background: var(--accent-wash); }
+
+/* Wide screens: the bars line up with the page, not the window's edges. */
+@media (min-width: 900px) {
+  #topbar { padding-inline: max(16px, calc((100vw - 780px) / 2)); }
+  #tabs { padding-inline: max(8px, calc((100vw - 760px) / 2)); }
+}
