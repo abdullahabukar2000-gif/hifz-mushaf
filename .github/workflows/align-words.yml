@@ -4,9 +4,6 @@
 # data/words-aligned/ and used by every later build.
 name: Align words to recordings
 on:
-  push:
-    branches: [claude/great-goodall-w4d11z]
-    paths: [scripts/align-words.py, .github/workflows/align-words.yml]
   workflow_dispatch:
 permissions:
   contents: write

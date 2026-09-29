@@ -1,0 +1,32 @@
+# Quick check of the word aligner on a few ayahs per reciter (report committed
+# to probe/align-test.txt).
+name: Align words (quick check)
+on:
+  push:
+    branches: [claude/great-goodall-w4d11z]
+    paths: [scripts/align-words.py, .github/workflows/align-test.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y ffmpeg >/dev/null 2>&1 && pip install -q onnxruntime numpy
+      - uses: actions/cache@v4
+        with: { path: align-assets, key: tilawi-e9448a0e }
+      - run: |
+          mkdir -p align-assets && cd align-assets
+          M=https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/e9448a0e84f3adb64c28b7a8db501dd8e0e59a84
+          for f in fastconformer_full_mixed.onnx vocab.json quran_ctc_tokens.json; do [ -s $f ] || curl -sfL -o $f $M/$f; done
+      - run: python3 scripts/fetch-timings.py abdurrashid_sufi > /dev/null && python3 scripts/fetch-qdc.py > /dev/null
+      - run: |
+          mkdir -p probe
+          for r in muaiqly ayyub sufi tunaiji; do
+            echo "######## $r"; python3 scripts/align-words.py $r 1/1 --only 1,20,112 --limit 6 2>&1 | grep -v onnxruntime
+            python3 -c "import json;d=json.load(open('data/words-aligned/$r/20.json'));print('20:1', d.get('20:1'), d.get('_scores'))" 2>&1
+          done > probe/align-test.txt
+          cat probe/align-test.txt
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add probe/align-test.txt && git commit -m "Check: word aligner" && git pull -q --rebase && git push

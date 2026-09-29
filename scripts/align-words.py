@@ -78,7 +78,17 @@ model = ort.InferenceSession(f'{ASSETS}/fastconformer_full_mixed.onnx', opts, pr
 
 def logprobs(pcm):
     out = model.run(None, {'audio_signal': pcm[None, :].astype(np.float32), 'length': np.array([len(pcm)], dtype=np.int64)})[0][0]
+    # As log-probabilities (a no-op if they already are).
+    out = out - np.log(np.exp(out - out.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True)) - out.max(axis=1, keepdims=True)
     return out  # [T, vocab]
+
+def heard(lp):
+    """What the model hears (greedy), for the log."""
+    ids, prev = [], -1
+    for i in lp.argmax(axis=1):
+        if i != prev and i != BLANK: ids.append(int(i))
+        prev = i
+    return ''.join(vocab.get(i, '') for i in ids).replace('\u2581', ' ').strip()
 
 def force_align(lp, labels):
     """CTC Viterbi: the frame span of each label, and the path's mean log-prob per frame."""
@@ -108,13 +118,20 @@ def force_align(lp, labels):
             k = s // 2
             spans[k][1] = t if spans[k][1] is None else spans[k][1]
             spans[k][0] = t
-        s -= back[t, s]
+        s -= int(back[t, s])
     return spans, score
+
+shown = 0
 
 def align_ayah(pcm, words):
     """[[start s, end s] per word] or None, and the score."""
     labels = [i for w in words for i in w]
     lp = logprobs(pcm)
+    global shown
+    if shown < 4:
+        shown += 1
+        print('  heard:   ', heard(lp), '\n  expected:', ''.join(vocab.get(i, '') for i in labels).replace('\u2581', ' ').strip(),
+              '\n  frames', lp.shape, 'seconds', round(len(pcm) / RATE, 2), 'max frame prob', float(np.exp(lp.max(axis=1)).mean().round(3)), flush=True)
     spans, score = force_align(lp, labels)
     if spans is None or any(a is None for a, _ in spans): return None, score
     frame = len(pcm) / RATE / lp.shape[0]
@@ -144,6 +161,9 @@ total, acc, mine = sum(weights), 0, []
 for s, w in zip(range(1, 115), weights):
     if int(acc * parts / total) == part - 1: mine.append(s)
     acc += w
+if '--only' in sys.argv:  # a quick check on a few surahs: --only 1,20
+    mine = [int(x) for x in sys.argv[sys.argv.index('--only') + 1].split(',')]
+LIMIT = int(sys.argv[sys.argv.index('--limit') + 1]) if '--limit' in sys.argv else 10**9
 print(reciter, 'part', part, 'of', parts, 'surahs', mine[0], '-', mine[-1], flush=True)
 
 stats = {'aligned': 0, 'low': 0, 'mismatch': 0, 'nofile': 0, 'skipped': 0}
@@ -159,7 +179,7 @@ for s in mine:
         except Exception: have = {}
     result = {'_base': base, '_scores': {}}
     surah_pcm = None
-    for a in range(1, verses[s] + 1):
+    for a in range(1, min(verses[s], LIMIT) + 1):
         key = f'{s}:{a}'
         if key in have: stats['skipped'] += 1; continue
         words = words_of(tokens.get(key, []))
