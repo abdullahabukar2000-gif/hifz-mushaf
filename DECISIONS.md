@@ -251,3 +251,17 @@
   the app then plays those recordings (one file per surah), so words follow exactly. If
   the data isn't there, those reciters fall back to their everyayah per-ayah files.
   Other reciters: word positions are estimated from the words' lengths.
+
+# Khalifa Al-Tunaiji from quran.com
+
+- everyayah's Tunaiji files have ayahs under the wrong numbers in places (Ibrahim was
+  mapped by hand; Ar-Ra'd was reported off too). He now plays from quran.com's
+  whole-surah recordings, timed by ayah (scripts/fetch-qdc.py). At build time every
+  surah's ayah lengths are compared with Husary's and Minshawi's; a surah that
+  disagrees with both is reported, and if more than 3 do, Tunaiji is left on the old
+  files. His word timings there are too coarse, so his words use the estimate.
+
+# Layout
+
+- Verse by verse is centred (Arabic lines and English). The surah name sits in the
+  middle of its frame. On wide screens the top and bottom bars line up with the page.

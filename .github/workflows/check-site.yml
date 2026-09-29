@@ -21,7 +21,7 @@ jobs:
           {
             echo "publish run: ${{ github.event.workflow_run.conclusion }} ${{ github.event.workflow_run.head_sha }}"
             sleep 60
-            for p in "" data/timings/qdc-alafasy.json data/timings/qdc-husary.json data/timings/qdc-minshawi.json data/words/alafasy/14.json data/words/husary/14.json data/words/minshawi/14.json data/timings/abdurrashid_sufi.json; do
+            for p in "" data/timings/qdc-alafasy.json data/timings/qdc-husary.json data/timings/qdc-minshawi.json data/timings/qdc-tunaiji.json data/words/alafasy/14.json data/words/husary/14.json data/words/minshawi/14.json data/timings/abdurrashid_sufi.json; do
               echo "$(curl -s -o /tmp/f -w '%{http_code} %{size_download}' "$S/$p") $p"
             done
             head -c 300 /tmp/f; echo

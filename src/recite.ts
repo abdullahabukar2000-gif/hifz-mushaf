@@ -33,7 +33,7 @@ export const RECITERS: Reciter[] = [
   { id: 'husary', name: 'Mahmoud Khalil Al-Husary', folders: ['Husary_128kbps', 'Husary_64kbps'], qdc: true },
   { id: 'minshawi', name: 'Muhammad Siddiq Al-Minshawi', folders: ['Minshawy_Murattal_128kbps'], qdc: true },
   { id: 'muaiqly', name: 'Maher Al-Muaiqly', folders: ['MaherAlMuaiqly128kbps', 'Maher_AlMuaiqly_64kbps'] },
-  { id: 'tunaiji', name: 'Khalifa Al-Tunaiji', folders: ['khalefa_al_tunaiji_64kbps'] },
+  { id: 'tunaiji', name: 'Khalifa Al-Tunaiji', folders: ['khalefa_al_tunaiji_64kbps'], qdc: true },
   { id: 'ayyub', name: 'Muhammad Ayyub', folders: ['Muhammad_Ayyoub_128kbps', 'Muhammad_Ayyoub_64kbps'] },
   {
     id: 'sufi', name: 'Abdirashid Ali Sufi', folders: [],
@@ -62,7 +62,9 @@ const file = (surah: number, ayah: number) => `${String(surah).padStart(3, '0')}
 const FILE_FIXES: Record<string, Record<number, (ayah: number) => number | null>> = {
   tunaiji: { 14: (a) => (a === 1 ? null : a <= 51 ? a - 1 : 52) },
 };
-const fileAyah = (r: Reciter, surah: number, ayah: number): number | null => FILE_FIXES[r.id]?.[surah]?.(ayah) ?? ayah;
+// (Only for the per-ayah files: quran.com's whole-surah recordings are timed by ayah.)
+const fileAyah = (r: Reciter, surah: number, ayah: number): number | null =>
+  qdcFiles.has(r.id) ? ayah : FILE_FIXES[r.id]?.[surah]?.(ayah) ?? ayah;
 /** How many ayahs of a surah this reciter's source actually has. */
 const recordedCount = (r: Reciter, surah: number) => {
   const n = getChapter(surah)?.verses_count ?? 0;
@@ -408,6 +410,8 @@ async function start(): Promise<void> {
   const [s, a] = now.basmalah ? [1, 1] : [now.surah, now.ayah];
   tell();
   mediaSession(r);
+  await settled(r);
+  if (mine !== token || !now) return;
 
   if (fileAyah(r, s, a) === null) {
     // No recording of this ayah by this reciter: say so, then carry on.
@@ -422,8 +426,6 @@ async function start(): Promise<void> {
   }
 
   between = false;
-  await settled(r);
-  if (mine !== token || !now) return;
   if (wholeSurah(r)) { await startSegment(r, s, a, mine); return; }
 
   const blob = await savedBlob(r, s, a);

@@ -1,4 +1,4 @@
-# One-off check: which reciters have word-by-word timings (and the fetch log). The report is
+# One-off check: which reciters have word-by-word timings (and the fetch log, incl. Tunaiji's surah check). The report is
 # committed to probe/segments.txt.
 name: Probe word timings
 on:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir -p probe && python3 scripts/fetch-qdc.py | grep -v '^qdc reciter' | cut -c1-600 > probe/qdc-log.txt; cat probe/qdc-log.txt
+      - run: mkdir -p probe && python3 scripts/fetch-qdc.py | grep -v '^qdc reciter' | cut -c1-3000 > probe/qdc-log.txt; cat probe/qdc-log.txt
       - run: |
           git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
           git add probe/qdc-log.txt && git commit -m "Probe: word timing fetch log" && git pull -q --rebase && git push

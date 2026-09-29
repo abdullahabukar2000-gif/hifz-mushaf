@@ -16,7 +16,15 @@ WANT = {  # app id: (name contains, style must contain / must not contain)
     'alafasy': ('afasy', 'murattal', None),
     'husary': ('husary', 'murattal', 'muallim'),
     'minshawi': ('minshawi', 'murattal', 'mujawwad'),
+    # Only ayah times are needed here (its word timings are too coarse): these
+    # recordings replace everyayah's, which has ayahs under the wrong numbers.
+    'tunaiji': ('tunaiji', 'murattal', None),
 }
+# Reciters used only for their ayah times (word times kept where usable).
+AYAHS_ONLY = {'tunaiji'}
+# Every ayah's length is compared with the same ayah by these reciters: a
+# surah whose timing is off (an ayah under the wrong number) stands out.
+durations = {}
 API = 'https://api.qurancdn.com/api/qdc/audio/reciters'
 
 def get(url):
@@ -88,7 +96,7 @@ def one(app, name, style, avoid):
                 # word missing from the list just shows with the next one (or when the
                 # ayah ends).
                 ws_ = [w for w, _, _ in seg]
-                if seg and ws_ == sorted(ws_) and 1 <= ws_[0] and ws_[-1] <= n and [a for _, a, _ in seg] == sorted(a for _, a, _ in seg):
+                if app not in AYAHS_ONLY and seg and ws_ == sorted(ws_) and 1 <= ws_[0] and n - 1 <= ws_[-1] <= n and [a for _, a, _ in seg] == sorted(a for _, a, _ in seg):
                     word_ok += 1
                     ws[v['verse_key']] = seg
             per_surah[s] = ws
@@ -96,8 +104,27 @@ def one(app, name, style, avoid):
         if problems or not url_tmpl:
             print(app, ': left out —', problems[:5]); return
         print(app, f': usable word timings for {word_ok} of {word_all} ayahs (the rest: estimated)')
-        if word_ok < 0.8 * word_all:
+        if app not in AYAHS_ONLY and word_ok < 0.8 * word_all:
             print(app, ': too many ayahs whose word timings don\'t match — left out'); return
+        durations[app] = {s: [b - a for a, b in zip(t, t[1:])] for s, t in timing.items()}
+        others = [o for o in durations if o != app]
+        if others:
+            off = []
+            for s_, d in durations[app].items():
+                if len(d) < 4: continue
+                cs = []
+                for o in others:
+                    e = durations[o].get(s_)
+                    if not e or len(e) != len(d): continue
+                    ma, mb = sum(d) / len(d), sum(e) / len(e)
+                    num = sum((x - ma) * (y - mb) for x, y in zip(d, e))
+                    den = (sum((x - ma) ** 2 for x in d) * sum((y - mb) ** 2 for y in e)) ** .5
+                    cs.append(num / den if den else 1)
+                # Off only if it disagrees with every other reciter.
+                if cs and max(cs) < 0.8: off.append(f'{s_} ({max(cs):.2f})')
+            print(app, ': ayah lengths match the other reciters in every surah' if not off else f': surahs whose ayah lengths look off: {off}')
+            if app in AYAHS_ONLY and len(off) > 3:
+                print(app, ': too many surahs look off — left out'); return
         os.makedirs('public/data/timings', exist_ok=True)
         json.dump({'url': url_tmpl, **timing}, open(f'public/data/timings/qdc-{app}.json', 'w'), separators=(',', ':'))
         os.makedirs(f'public/data/words/{app}', exist_ok=True)
