@@ -463,12 +463,32 @@ function highlight(key: string): void {
   if (!key) return;
   const els = stage.querySelectorAll<HTMLElement>(`.ayah[data-key="${key}"], .w[data-key="${key}"]`);
   els.forEach((el) => el.classList.add('reciting'));
-  if (view === 'verses' && els[0]) {
-    const box = els[0].getBoundingClientRect();
-    const area = stage.getBoundingClientRect();
-    if (box.top < area.top || box.top > area.bottom - 120) els[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  follow(true);
 }
+/** Keeps the playing ayah centred in the verses view (scrolling only the verses
+ * area: scrollIntoView could move the whole page, and the bars with it). An ayah
+ * taller than the screen follows its words as they're recited instead. */
+function follow(changed = false): void {
+  if (view !== 'verses' || !marked) return;
+  const el = stage.querySelector<HTMLElement>(`.ayah[data-key="${marked}"]`);
+  if (!el) return;
+  const box = el.getBoundingClientRect();
+  const area = stage.getBoundingClientRect();
+  let target: number;
+  if (box.height < area.height * 0.8) {
+    target = box.top + box.height / 2 - (area.top + area.height / 2);
+    if (!changed && Math.abs(target) < area.height * 0.2) return;
+  } else {
+    const words = el.querySelectorAll<HTMLElement>('.heard');
+    const last = words[words.length - 1];
+    const y = last ? last.getBoundingClientRect().bottom : box.top;
+    if (changed) target = box.top - area.top - 12;
+    else if (y > area.bottom - area.height * 0.3) target = y - (area.top + area.height / 2);
+    else return;
+  }
+  if (Math.abs(target) > 4) stage.scrollTo({ top: stage.scrollTop + target, behavior: 'smooth' });
+}
+let lastFollow = 0;
 new MutationObserver(() => {
   if (!marked) return;
   stage.querySelectorAll<HTMLElement>(`.ayah[data-key="${marked}"]:not(.reciting), .w[data-key="${marked}"]:not(.reciting)`).forEach((el) => el.classList.add('reciting'));
@@ -495,6 +515,7 @@ onProgress((key, fraction, known) => {
   }
   if (hideArabic) fillIn(key, reached);
   if (view === 'verses') revealWords(key, reached);
+  if (Date.now() - lastFollow > 700) { lastFollow = Date.now(); follow(); }
 });
 
 document.addEventListener('play-ayah', (e) => {

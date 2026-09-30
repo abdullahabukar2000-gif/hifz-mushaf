@@ -192,6 +192,8 @@ body {
 /* ------------------------------------------------------------------ top bar */
 
 #topbar {
+  grid-row: 1;
+  position: relative; z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -757,3 +759,10 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 .reveal-item[aria-checked='true']::before { content: '✓'; position: absolute; left: 0.7rem; top: 0.55rem; color: var(--accent-ink); font-weight: 600; }
 .reveal-label { font-weight: 600; font-size: 0.95rem; }
 .reveal-note { font-size: 0.8rem; color: var(--ink-quiet); }
+
+/* Each bar keeps its own row, whatever else is on the page: the top bar (with
+   the reveal and listen buttons) always at the top, the tabs always at the bottom. */
+#stage { grid-row: 2; overscroll-behavior: contain; }
+#player { grid-row: 3; }
+#tabs { grid-row: 4; }
+body > :not(#topbar, #stage, #player, #tabs) { grid-row: 1 / -1; grid-column: 1; }
