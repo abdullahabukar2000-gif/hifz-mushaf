@@ -305,3 +305,11 @@ there are no published times is the start found by listening alone.
 `scripts/apply-retimed.py` applies the results at build time. Tunaiji 14:37's
 opening fell where two listening chunks meet; its start was set by hand just
 after 14:36's last letter (noted in its file as `by_hand`).
+
+Where that ayah-by-ayah check still left a start wrong (Minshawi's Ar-Ra'd:
+13:4, 13:21 and 13:28 began inside the ayah before; 13:35-36 a second early),
+`scripts/resync-surah.py` lines up the whole surah's letters with everything
+heard in one go, so each ayah can only land after the one before it, and
+writes every ayah's word times from the same match (quran.com's word times
+there were off along with its ayah times). Every ayah was then checked to
+open with its own first word and end with its own last.
