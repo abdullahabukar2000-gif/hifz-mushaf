@@ -321,6 +321,81 @@ let pauseTimer: number | undefined;
 let token = 0;
 /** For one-file-per-surah reciters: where the current ayah ends (seconds). */
 let segmentEnd: number | null = null;
+/**
+ * quran.com's recordings change bit rate as they go, so a browser (iPhone
+ * Safari above all) can only guess where a time is when it jumps into one,
+ * landing seconds off. Instead, the part of the file to play is fetched from
+ * the exact frame where the ayah starts (public/data/frames, made by
+ * scripts/mp3-frames.py) and played from its beginning: no jump to guess.
+ * `chunkBase` is where in the surah that part starts, `chunkEnd` where it ends.
+ */
+let chunkBase = 0;
+let chunkEnd = Infinity;
+let chunkLast = false;
+/** Where the recitation is in the surah's recording (seconds). */
+const pos = () => audio.currentTime + chunkBase;
+interface FrameMap { first: number; sr: number; spf: number; v: number; delay: number; f: string; end: number; at?: Float64Array }
+const frameJobs = new Map<string, Promise<FrameMap | null>>();
+function frameMap(r: Reciter, surah: number): Promise<FrameMap | null> {
+  const k = `${r.id}/${surah}`;
+  let job = frameJobs.get(k);
+  if (!job) {
+    job = r.qdc ? fetch(`data/frames/${k}.json`).then((res) => (res.ok ? res.json() : null)).catch(() => null) : Promise.resolve(null);
+    frameJobs.set(k, job);
+  }
+  return job;
+}
+const MP3_RATES: Record<number, number[]> = {
+  1: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320],
+  2: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160],
+};
+/** The frame starting at or just before `t` (s): its byte in the file and its time. */
+function frameAt(m: FrameMap, t: number): { byte: number; time: number } {
+  if (!m.at) {
+    const mpeg1 = m.v === 3;
+    const at = new Float64Array(m.f.length + 1);
+    at[0] = m.first;
+    for (let i = 0; i < m.f.length; i++) {
+      const c = m.f.charCodeAt(i) - 48;
+      at[i + 1] = at[i] + Math.floor(((mpeg1 ? 144 : 72) * MP3_RATES[mpeg1 ? 1 : 2][c >> 1] * 1000) / m.sr) + (c & 1);
+    }
+    m.at = at;
+  }
+  const k = Math.max(0, Math.min(m.f.length, Math.floor((t * m.sr + m.delay) / m.spf)));
+  return { byte: m.at[k], time: (k * m.spf - m.delay) / m.sr };
+}
+/** The bytes from..to of a surah's recording: from the saved copy, or fetched. */
+async function fileBytes(r: Reciter, surah: number, from: number, to: number): Promise<Blob> {
+  const saved = await savedBlob(r, surah, 1);
+  if (saved) return saved.slice(from, to, 'audio/mpeg');
+  const res = await fetch(addresses(r, surah, 1)[0], { headers: { Range: `bytes=${from}-${to - 1}` } });
+  if (!res.ok) throw new Error();
+  const blob = await res.blob();
+  return res.status === 206 ? new Blob([blob], { type: 'audio/mpeg' }) : blob.slice(from, to, 'audio/mpeg');
+}
+const MAX_CHUNK = 1_500_000; // bytes fetched at a time (about a minute of recitation)
+/** Load the part of the file from `from` (s) to an ayah boundary a few minutes on. */
+async function loadChunk(r: Reciter, surah: number, m: FrameMap, from: number, mine: number): Promise<boolean> {
+  const t = (await timings(r))[surah] ?? [];
+  // One frame early: a frame can lean on the one before it, so the first one played may be lost.
+  const start = frameAt(m, Math.max(0, from - m.spf / m.sr));
+  let endTime = Infinity;
+  let endByte = m.end;
+  for (const x of t) {
+    const at = frameAt(m, x / 1000);
+    if (x / 1000 > from + 1 && at.byte - start.byte >= MAX_CHUNK) { endTime = at.time; endByte = at.byte; break; }
+  }
+  const blob = await fileBytes(r, surah, start.byte, endByte);
+  if (mine !== token || !now) return false;
+  if (blobUrl) URL.revokeObjectURL(blobUrl);
+  audio.src = blobUrl = URL.createObjectURL(blob);
+  audio.dataset.file = `${r.id}/${surah}`;
+  chunkBase = start.time;
+  chunkEnd = endTime;
+  chunkLast = endTime === Infinity;
+  await metadata();
+  return mine === token && !!now && !audio.error;
+}
 /** Set between one recitation finishing and the next starting. */
 let between = false;
 /** The recording runs straight on into the next ayah (no jump needed). */
@@ -338,7 +413,7 @@ const progressFns = new Set<ProgressFn>();
 export function onProgress(fn: ProgressFn): () => void { progressFns.add(fn); return () => progressFns.delete(fn); }
 function emitProgress(): void {
   if (!now || now.basmalah || !progressFns.size) return;
-  const t = audio.currentTime;
+  const t = pos();
   const end = segmentEnd !== null && Number.isFinite(segmentEnd) ? segmentEnd : audio.duration;
   const start = audio.dataset.file ? segmentStart : 0;
   if (!Number.isFinite(end) || end <= start) return;
@@ -455,6 +530,7 @@ async function start(): Promise<void> {
   if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
   segmentEnd = null;
   audio.dataset.file = '';
+  chunkBase = 0; chunkEnd = Infinity; chunkLast = true;
   const sources = blob ? [(blobUrl = URL.createObjectURL(blob))] : addresses(r, s, a, true);
   for (const src of sources) {
     audio.src = src;
@@ -485,6 +561,37 @@ async function startSegment(r: Reciter, surah: number, ayah: number, mine: numbe
   if (mine !== token || !now) return;
   if (!seg) { cannotPlay(); return; }
   void surah; void ayah;
+  const map = await frameMap(r, seg.file);
+  if (mine !== token || !now) return;
+  if (map) {
+    const inChunk = audio.dataset.file === `${r.id}/${seg.file}` && !!audio.src && seg.from >= chunkBase && seg.to <= chunkEnd + 0.05;
+    const goOn = continuing && !audio.paused && inChunk;
+    continuing = false;
+    if (!goOn) {
+      // Back to where this part starts is exact; anywhere else, fetch from the ayah's own frame.
+      if (inChunk && Math.abs(seg.from - chunkBase) < 0.1) audio.currentTime = 0;
+      else {
+        let ok = false;
+        try { ok = await loadChunk(r, seg.file, map, seg.from, mine); } catch { ok = false; }
+        if (mine !== token || !now) return;
+        if (!ok) { audio.dataset.file = ''; cannotPlay(); return; }
+      }
+    }
+    segmentEnd = seg.to;
+    segmentStart = seg.from;
+    audio.playbackRate = now.plan.speed;
+    try {
+      await audio.play();
+      watchSegment();
+    } catch (e) {
+      if (mine !== token || !now) return;
+      if ((e as DOMException).name === 'NotAllowedError') { now.playing = false; tell(); return; }
+      cannotPlay();
+    }
+    return;
+  }
+  if (chunkBase !== 0 || !chunkLast) audio.dataset.file = ''; // a fetched part isn't the whole file
+  chunkBase = 0; chunkEnd = Infinity; chunkLast = true;
   // Reuse the loaded file when the next ayah is in the same one.
   const key = `${r.id}/${seg.file}`;
   if (audio.dataset.file !== key) {
@@ -570,17 +677,18 @@ async function confirmJump(r: Reciter, seg: { file: number; from: number; to: nu
 function watchSegment(): void {
   const check = () => {
     if (segmentEnd === null || audio.paused) return;
-    if (audio.currentTime >= segmentEnd - 0.02) { segmentEnd = null; finished(true); return; }
+    if (pos() >= segmentEnd - 0.02) { segmentEnd = null; finished(true); return; }
     requestAnimationFrame(check);
   };
   requestAnimationFrame(check);
 }
 audio.addEventListener('timeupdate', () => {
   emitProgress();
-  if (segmentEnd !== null && audio.currentTime >= segmentEnd - 0.02) { segmentEnd = null; finished(true); }
+  if (segmentEnd !== null && pos() >= segmentEnd - 0.02) { segmentEnd = null; finished(true); }
 });
 
-audio.addEventListener('ended', () => { segmentEnd = null; finished(false); });
+// The end of a fetched part that isn't the end of the surah: the ayah is done, carry on.
+audio.addEventListener('ended', () => { segmentEnd = null; finished(audio.dataset.file ? !chunkLast : false); });
 
 /**
  * One recitation is done. In a whole-surah file the audio keeps running into
