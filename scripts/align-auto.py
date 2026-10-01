@@ -363,7 +363,7 @@ print(f'{len(verses)} of {len(counts)} ayahs grouped ({len(counts) - len(verses)
       f'{sum(sizes)} groups, {sum(sizes) / len(sizes):.1f} per ayah')
 
 existing['verses'] = dict(sorted(verses.items(), key=lambda kv: tuple(map(int, kv[0].split(':')))))
-existing['note'] = ('Groups for 13:1-15:15 (all of Ar-Ra'd) checked by hand (scripts/align-source.py); the rest matched automatically '
+existing['note'] = ('Groups for 13:1-15:15 (all of Ar-Ra’d) checked by hand (scripts/align-source.py); the rest matched automatically '
                     'from quran.com word-by-word glosses (scripts/align-auto.py). Pieces are exact slices of the translation.')
 if '--write' in sys.argv:
     json.dump(existing, open(out_path, 'w'), ensure_ascii=False, separators=(',', ':'))
