@@ -1,4 +1,4 @@
-publish run: success 07a7f7558c20e1166e29d0c8187eef42c2e70956
+publish run: success f464823b71132bca7a65fbbb3181fbc1c4a8fff6
 200 1800 
 200 45814 data/timings/qdc-alafasy.json
 200 46857 data/timings/qdc-husary.json
@@ -35,5 +35,5 @@ content-range: bytes 1000-1999/17768747
 == minshawi 13 live:
 [3980, 26800, 63720, 94230, 139300, 176350, 202710, 224930]
 Xing True Info False VBRI False
-/home/runner/work/_temp/d23e12f0-fee2-4324-b439-dba669884ab6.sh: line 20: ffprobe: command not found
+/home/runner/work/_temp/13b00e85-62d0-4c31-91b5-4f9d11b3ce1d.sh: line 20: ffprobe: command not found
 frame bitrates {128: 32, 224: 5, 112: 2, 160: 163, 256: 2, 192: 96}
