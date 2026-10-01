@@ -340,7 +340,9 @@ function frameMap(r: Reciter, surah: number): Promise<FrameMap | null> {
   const k = `${r.id}/${surah}`;
   let job = frameJobs.get(k);
   if (!job) {
-    job = r.qdc ? fetch(`data/frames/${k}.json`).then((res) => (res.ok ? res.json() : null)).catch(() => null) : Promise.resolve(null);
+    job = r.qdc ? fetch(`data/frames/${k}.json`).then((res) => (res.ok ? res.json() : null))
+      // Only a map of the whole file (one that stopped early can't place the rest).
+      .then((m: FrameMap & { bytes: number } | null) => (m && m.end >= m.bytes - 2000 ? m : null)).catch(() => null) : Promise.resolve(null);
     frameJobs.set(k, job);
   }
   return job;
