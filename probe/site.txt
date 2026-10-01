@@ -1,4 +1,4 @@
-publish run: success eeb1afc640e63a16f2db7933949c496c35016b99
+publish run: success 967162e41e8fab6f153854d7450188c72dc5b80c
 200 1800 
 200 45814 data/timings/qdc-alafasy.json
 200 46857 data/timings/qdc-husary.json
@@ -32,3 +32,8 @@ access-control-allow-origin: *
 access-control-allow-headers: Server, x-goog-meta-frames, Content-Length, Content-Type, Range, X-Requested-With, If-Modified-Since, If-None-Match
 access-control-expose-headers: Server, x-goog-meta-frames, Content-Length, Content-Type, Range, X-Requested-With, If-Modified-Since, If-None-Match
 content-range: bytes 1000-1999/17768747
+== minshawi 13 live:
+[3980, 26800, 63720, 94230, 139300, 176350, 202710, 224930]
+Xing True Info False VBRI False
+/home/runner/work/_temp/3d98860d-6fb3-474c-805d-393bd430e3dc.sh: line 20: ffprobe: command not found
+frame bitrates {128: 32, 224: 5, 112: 2, 160: 163, 256: 2, 192: 96}
