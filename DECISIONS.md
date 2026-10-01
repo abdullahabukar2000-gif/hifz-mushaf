@@ -313,3 +313,15 @@ heard in one go, so each ayah can only land after the one before it, and
 writes every ayah's word times from the same match (quran.com's word times
 there were off along with its ayah times). Every ayah was then checked to
 open with its own first word and end with its own last.
+
+# Ar-Ra'd meaning boxes by hand
+
+All of Ar-Ra'd (13:1-42; 13:43 already was) now has hand-made groups in
+`scripts/align-source.py`: each box is one small unit of meaning (a subject,
+an action, a phrase such as "from your Lord"), paired with exactly the Arabic
+words it translates, so a box can be tied back to its words while memorising.
+Where English order differs from the Arabic, a box takes the separate
+pieces of its meaning (e.g. 13:3 "and created … in pairs"). Pieces are exact
+slices of The Clear Quran, never reworded; the script checks they rebuild
+each ayah's translation. During recitation a box shows as its first Arabic
+word is reached.
