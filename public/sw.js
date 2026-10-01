@@ -7,7 +7,7 @@
 // - Recitations are not handled here: the app saves those itself, only when
 //   you choose to download them (see src/recite.ts).
 
-const CACHE = 'hifz-app-v1';
+const CACHE = 'hifz-app-v2';
 
 // On install, save the page, the scripts and styles it names, and the page index,
 // so the app opens offline even if the first visit ended before they were reused.
@@ -47,6 +47,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   const isData = url.pathname.includes('/data/');
+  // Ayah and word timings: always the latest (they get corrected), the saved copy only offline.
+  if (/\/data\/(timings|words)\//.test(url.pathname)) {
+    event.respondWith(fromNetwork(request).catch(async () => (await caches.match(request)) ?? Response.error()));
+    return;
+  }
   event.respondWith(caches.match(request).then((saved) => {
     if (saved) {
       if (isData) event.waitUntil(fromNetwork(request).catch(() => undefined));

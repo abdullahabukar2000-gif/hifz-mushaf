@@ -32,6 +32,20 @@ jobs:
               echo "== $u"
               curl -s -D - -o /dev/null -H "Origin: https://abdullahabukar2000-gif.github.io" -H "Range: bytes=1000-1999" "$u" | grep -iE "^HTTP|content-range|access-control-allow-origin|content-type|accept-ranges"
             done
+            echo "== minshawi 13 live:"; curl -s "$S/data/timings/qdc-minshawi.json" | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['13'][:8])"
+            curl -s -r 0-300000 -o /tmp/m.mp3 https://download.quranicaudio.com/qdc/siddiq_minshawi/murattal/13.mp3
+            python3 -c "d=open('/tmp/m.mp3','rb').read();print('Xing',b'Xing' in d[:20000],'Info',b'Info' in d[:20000],'VBRI',b'VBRI' in d[:20000])"
+            ffprobe -v error -show_entries format=bit_rate:stream=bit_rate,codec_name -of compact /tmp/m.mp3 || true
+            python3 - <<'PY' || true
+          d=open('/tmp/m.mp3','rb').read(); i=d.find(b'\xff\xfb'); seen={}
+          R=[0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0]
+          n=0
+          while 0<=i<len(d)-4 and n<300:
+              b=d[i+2]>>4; br=R[b]; pad=(d[i+2]>>1)&1
+              if not br: break
+              seen[br]=seen.get(br,0)+1; i+=144000*br//44100+pad; n+=1
+          print('frame bitrates', seen)
+          PY
           } > probe/site.txt 2>&1
           cat probe/site.txt
           git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
