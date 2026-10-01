@@ -1,0 +1,25 @@
+# Maps where each moment sits in every quran.com whole-surah recording
+# (scripts/mp3-frames.py), so the app can start an ayah at its exact place.
+name: Map recording files
+on:
+  workflow_dispatch:
+  push:
+    paths: [scripts/mp3-frames.py, .github/workflows/mp3-frames.yml]
+permissions:
+  contents: write
+jobs:
+  frames:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        reciter: [minshawi, alafasy, husary, tunaiji]
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/fetch-qdc.py > /dev/null
+      - run: python3 scripts/mp3-frames.py ${{ matrix.reciter }} | tee frames.log | head -20; tail -3 frames.log
+      - run: |
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add public/data/frames && git commit -qm "Recording file map: ${{ matrix.reciter }}"
+          for i in 1 2 3 4 5; do git pull -q --rebase && git push -q && break; sleep $((i * 5)); done
