@@ -325,3 +325,14 @@ pieces of its meaning (e.g. 13:3 "and created … in pairs"). Pieces are exact
 slices of The Clear Quran, never reworded; the script checks they rebuild
 each ayah's translation. During recitation a box shows as its first Arabic
 word is reached.
+
+# Any surah on request: the surah-boxes skill
+
+`.claude/skills/surah-boxes/SKILL.md` holds the rules for hand-made meaning
+boxes (one idea per box, usually 1–4 Arabic words, learnable units, story
+still readable) and for overview notes, so any surah can be done the same way
+by naming it. Hand boxes for a surah go in `data/boxes/<surah>.json` (read by
+align-source.py); `scripts/box-worksheet.py` prints the translation and each
+Arabic word with its gloss. Overview notes go in `data/notes/<surah>.json` and
+show in verse by verse before each group of ayahs (in the margin on wide
+screens) — the app's own study notes, never presented as translation.

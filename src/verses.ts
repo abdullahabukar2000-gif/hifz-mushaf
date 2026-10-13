@@ -114,6 +114,8 @@ export function renderVerses(startPage: number, options: VerseOptions): { root: 
       for (const key of data.verses) {
         if (seen.has(key)) continue;
         seen.add(key);
+        const note = sectionNote(key);
+        if (note) frag.append(note);
         frag.append(renderAyah(key, options));
       }
     }
@@ -346,4 +348,20 @@ function upgradeGlyphs(container: HTMLElement): void {
     const sample = getPage(page)!.lines.flatMap((l) => l.words.map((w) => w.code)).join('');
     ensureFont(family, sample).then((ok) => { if (ok) apply(); });
   }
+}
+
+// Overview notes: what each group of ayahs is about (data/notes/<surah>.json),
+// shown before the group's first ayah — in the margin on wide screens.
+const noteFiles = import.meta.glob<{ sections: [number, number, string][] }>('../data/notes/*.json', { eager: true, import: 'default' });
+const notes = new Map<string, { to: number; text: string }>();
+for (const [path, file] of Object.entries(noteFiles)) {
+  const surah = path.match(/(\d+)\.json$/)?.[1];
+  for (const [from, to, text] of file.sections) notes.set(`${surah}:${from}`, { to, text });
+}
+function sectionNote(key: string): HTMLElement | null {
+  const n = notes.get(key);
+  if (!n) return null;
+  const [surah, from] = key.split(':');
+  const range = n.to > Number(from) ? `${surah}:${from}–${n.to}` : key;
+  return h('aside', { class: 'section-note' }, h('div', { class: 'section-note-body' }, h('span', { class: 'section-range' }, range), h('span', {}, n.text)));
 }

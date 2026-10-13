@@ -766,3 +766,15 @@ body.dragging, body.dragging * { cursor: ew-resize !important; user-select: none
 #player { grid-row: 3; }
 #tabs { grid-row: 4; }
 body > :not(#topbar, #stage, #player, #tabs) { grid-row: 1 / -1; grid-column: 1; }
+
+/* Overview notes before a group of ayahs: a small banner; in the margin on wide screens. */
+.section-note-body {
+  margin: 1.2rem 0 0; padding: 0.55rem 0.8rem; border-left: 3px solid var(--accent);
+  background: var(--accent-wash); border-radius: 6px; font-size: 0.85rem; line-height: 1.45;
+  display: grid; gap: 0.15rem;
+}
+.section-range { font-size: 0.72rem; letter-spacing: 0.06em; color: var(--accent-ink); font-variant-numeric: lining-nums; }
+@media (min-width: 1240px) {
+  .section-note { position: relative; height: 0; }
+  .section-note-body { position: absolute; top: 1.6rem; left: calc(100% + 1.5rem); width: 13rem; margin: 0; }
+}

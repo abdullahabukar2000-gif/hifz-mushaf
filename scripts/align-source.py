@@ -3,7 +3,8 @@
 # Pieces are exact substrings of the published translation, never edited.
 # Run `python3 scripts/align-source.py` to check every ayah (groups cover all
 # words in order; pieces rebuild the translation exactly) and write
-# data/align/hand.json (then run align-auto.py for the rest). It stops and lists problems instead of writing.
+# data/align/hand.json (then run align-auto.py for the rest). Groups in
+# data/boxes/<surah>.json are read too. It stops and lists problems instead of writing.
 A = {
 "13:1": [(0,"Alif-Lãm-Mĩm-Ra."),(3,"These are the verses of the Book."),(6,"What has been revealed to you ˹O Prophet˺"),(8,"from your Lord"),(9,"is the truth,"),(12,"but most people"),(14,"do not believe")],
 "13:2": [(1,"It is Allah Who"),(3,"has raised the heavens"),(5,"without pillars—"),(6,"as you can see—"),(8,"then established Himself"),(10,"on the Throne."),(11,"He has subjected"),(13,"the sun and the moon,"),(15,"each orbiting"),(17,"for an appointed term."),(19,"He conducts the whole affair."),(21,"He makes the signs clear"),(22,"so that you may"),(24,"of the meeting with your Lord"),(25,"be certain")],
@@ -126,6 +127,11 @@ for f in glob.glob(os.path.join(ROOT, 'data/pages/*.json')):
             if w['type'] == 'word': counts[w['verseKey']] = max(counts.get(w['verseKey'], 0), w['pos'])
 tr = {}
 for f in glob.glob(os.path.join(ROOT, 'data/translations/clear-quran/*.json')): tr.update(json.load(open(f))['verses'])
+
+# Hand-made groups per surah (the surah-boxes skill): data/boxes/<surah>.json,
+# {"<s>:<a>": [[last word index, piece or [pieces]], ...]}; they take the place of any above.
+for f in sorted(glob.glob(os.path.join(ROOT, 'data/boxes/*.json'))):
+    A.update({k: [tuple(g) for g in v] for k, v in json.load(open(f)).items()})
 
 problems, out = [], {}
 for key, groups in A.items():
