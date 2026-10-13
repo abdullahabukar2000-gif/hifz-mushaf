@@ -16,7 +16,7 @@ import { onChange } from './notes';
 import { claudeHost, onSyncState, startSync } from './sync';
 import { mountPlayerBar, openPlayerSheet, playFrom } from './player';
 import { onPlayer, onProgress, stop } from './recite';
-import { clearHeard, fillWords, revealWords } from './verses';
+import { clearHeard, coverAgain, fillWords, revealWords } from './verses';
 import { h } from './dom';
 import { ayahWords } from './data';
 import { registerOffline } from './offline';
@@ -450,10 +450,20 @@ listenButton.addEventListener('click', () => {
 
 // The ayah being recited is marked, in the mushaf and in verse by verse, and kept in view.
 let marked = '';
+let lastRound = '';
 onPlayer((n) => {
   const key = n && !n.basmalah ? `${n.surah}:${n.ayah}` : '';
   // An ayah the reciter has finished is shown in full.
   if (marked && key !== marked && hideArabic) { fillIn(marked, Infinity); if (view === 'verses') revealWords(marked, Infinity); }
+  // Each time an ayah starts (again, on a repeat), it is hidden again and revealed as it's recited.
+  const round = n && key ? `${key}|${n.ayahRound}|${n.rangeRound}` : '';
+  if (round && round !== lastRound) {
+    if (lastRound && coverTranslations) {
+      coverAgain(key);
+      stage.querySelectorAll(`.w[data-key="${key}"].heard`).forEach((el) => el.classList.remove('heard'));
+    }
+    lastRound = round;
+  }
   highlight(key);
 });
 function highlight(key: string): void {

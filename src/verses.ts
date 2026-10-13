@@ -49,6 +49,13 @@ export function fillWords(key: string, words: number): void {
     if (Number(span.dataset.index) < words) span.classList.add('heard');
   });
 }
+/** An ayah starting again (a repeat): its English covers again and its words empty again. */
+export function coverAgain(key: string): void {
+  if (!shownWith?.coverTranslations) return;
+  revealed.delete(key);
+  heardUpTo.delete(key);
+  redraw(key);
+}
 export function clearHeard(): void {
   heardUpTo.clear();
   document.querySelectorAll('.vw.heard').forEach((el) => el.classList.remove('heard'));
